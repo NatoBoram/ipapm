@@ -1,0 +1,63 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      day: wednesday
+      time: 03:47
+      interval: monthly
+      timezone: America/Toronto
+    commit-message:
+      prefix: "⬆️ "
+    groups:
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      patch:
+        update-types:
+          - patch
+      minor-indirect:
+        update-types:
+          - minor
+        dependency-type: indirect
+      minor-all:
+        update-types:
+          - minor
+        dependency-type: all
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      day: wednesday
+      interval: monthly
+      time: 03:47
+      timezone: America/Toronto
+    commit-message:
+      prefix: "⬆️ "
+    groups:
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      actions:
+        patterns:
+          - actions/*
+      docker:
+        patterns:
+          - docker/*
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      day: wednesday
+      interval: monthly
+      time: 03:47
+      timezone: America/Toronto
+    commit-message:
+      prefix: "⬆️ "
+    groups:
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
