@@ -4,7 +4,7 @@ updates:
     directory: /
     schedule:
       day: wednesday
-      time: 03:47
+      time: "03:47"
       interval: monthly
       timezone: America/Toronto
     commit-message:
@@ -17,21 +17,21 @@ updates:
       patch:
         update-types:
           - patch
-      minor-indirect:
+      minor-development:
         update-types:
           - minor
-        dependency-type: indirect
-      minor-all:
+        dependency-type: development
+      minor-production:
         update-types:
           - minor
-        dependency-type: all
+        dependency-type: production
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       day: wednesday
       interval: monthly
-      time: 03:47
+      time: "03:47"
       timezone: America/Toronto
     commit-message:
       prefix: "⬆️ "
@@ -52,7 +52,7 @@ updates:
     schedule:
       day: wednesday
       interval: monthly
-      time: 03:47
+      time: "03:47"
       timezone: America/Toronto
     commit-message:
       prefix: "⬆️ "
