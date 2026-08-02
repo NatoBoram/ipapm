@@ -13,12 +13,46 @@ import (
 	"time"
 
 	"github.com/NatoBoram/ipapm/api"
+	"github.com/NatoBoram/ipapm/apt"
 	"github.com/NatoBoram/ipapm/config"
 	"github.com/NatoBoram/ipapm/env"
 	"github.com/NatoBoram/ipapm/kubo"
 )
 
-const timeout time.Duration = 5 * time.Second
+const (
+	interval time.Duration = 4 * time.Hour
+	timeout  time.Duration = 5 * time.Second
+)
+
+func cycle(ctx context.Context, env env.Env, kubo *kubo.Client) error {
+	config, err := config.Load(config.Env{CONFIG_DIR: env.CONFIG_DIR})
+	if err != nil {
+		return fmt.Errorf("couldn't load config: %w", err)
+	}
+
+	mapped := apt.MapSources(config.Sources)
+	log.Printf("mapped: %v", mapped)
+
+	return nil
+}
+
+func start(ctx context.Context, env env.Env, kubo *kubo.Client) {
+	cycle(ctx, env, kubo)
+
+	for {
+		timer := time.NewTimer(interval)
+
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+		case <-timer.C:
+			err := cycle(ctx, env, kubo)
+			if err != nil {
+				log.Printf("Error during cycle: %s", err)
+			}
+		}
+	}
+}
 
 func run(ctx context.Context) error {
 	env, err := env.LoadEnv()
@@ -36,7 +70,7 @@ func run(ctx context.Context) error {
 			KUBO_API_AUTH: env.KUBO_API_AUTH,
 			KUBO_API_URL:  env.KUBO_API_URL,
 		},
-		&http.Client{Timeout: timeout},
+		new(http.Client{Timeout: timeout}),
 	)
 	if err != nil {
 		return fmt.Errorf("couldn't create Kubo client: %w", err)
@@ -47,6 +81,8 @@ func run(ctx context.Context) error {
 		log.Printf("Couldn't connect to Kubo: %s", err)
 	}
 	log.Printf("Connected to Kubo %s", v.String())
+
+	go start(ctx, env, kubo)
 
 	server := http.Server{
 		Addr:        fmt.Sprintf(":%d", config.Port),

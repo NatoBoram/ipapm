@@ -16,7 +16,7 @@ type Client struct {
 	*rpc.HttpApi
 }
 
-func (k Client) Version(ctx context.Context) (*semver.Version, error) {
+func (k *Client) Version(ctx context.Context) (*semver.Version, error) {
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(timeout))
 	defer cancel()
 

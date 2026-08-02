@@ -13,9 +13,9 @@ type Config struct {
 	KUBO_API_URL  string
 }
 
-func New(config Config, c *http.Client) (Client, error) {
+func New(config Config, c *http.Client) (*Client, error) {
 	kubo, err := rpc.NewURLApiWithClient(config.KUBO_API_URL, c)
-	client := Client{kubo}
+	client := new(Client{kubo})
 	if err != nil {
 		return client, fmt.Errorf("couldn't create a new api client: %w", err)
 	}

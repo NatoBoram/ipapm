@@ -1,13 +1,18 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/NatoBoram/ipapm/kubo"
+	"github.com/blang/semver/v4"
 )
 
+type Kubo interface {
+	Version(ctx context.Context) (*semver.Version, error)
+}
+
 type Config struct {
-	Kubo kubo.Client
+	Kubo Kubo
 }
 
 func New(config Config) http.Handler {

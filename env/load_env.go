@@ -17,7 +17,7 @@ type Env struct {
 }
 
 // loadEnv loads the environment variables from the .env files.
-func LoadEnv() (*Env, error) {
+func LoadEnv() (Env, error) {
 	environment := getEnvironment()
 
 	files := []string{
@@ -29,11 +29,11 @@ func LoadEnv() (*Env, error) {
 
 	for _, file := range files {
 		if err := godotenv.Load(file); err != nil && !os.IsNotExist(err) {
-			return nil, fmt.Errorf("failed to load environment variables from %q: %w", file, err)
+			return Env{}, fmt.Errorf("failed to load environment variables from %q: %w", file, err)
 		}
 	}
 
-	return &Env{
+	return Env{
 		GO_ENV:        getEnvironment(),
 		CONFIG_DIR:    os.Getenv("CONFIG_DIR"),
 		KUBO_API_AUTH: os.Getenv("KUBO_API_AUTH"),
