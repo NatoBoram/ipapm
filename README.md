@@ -4,6 +4,24 @@
 
 Mirrors APT repositories to IPFS.
 
+## Roadmap
+
+> [!CAUTION]
+> This is a work in progress.
+
+- [x] Get Kubo config
+- [x] Connect to Kubo (`github.com/ipfs/kubo/client/rpc`)
+- [x] Get APT sources and config
+- [ ] Merge sources per URIs
+- [ ] Download InRelease files (`github.com/aptly-dev/aptly`)
+- [ ] Verify GPG keys (`github.com/ProtonMail/gopenpgp/v3`)
+- [ ] Get `InRelease` from MFS
+- [ ] Search differences
+- [ ] Stream different files to MFS while verifying hashes
+- [ ] Delete outdated files from MFS
+- [ ] Commit `InRelease` file to MFS
+- [ ] Publish to IPNS
+
 ## Docker
 
 The default config file is at `/home/nonroot/.config/ipapm/config.yaml`.

@@ -11,8 +11,13 @@ import (
 )
 
 type Config struct {
-	Sources []Source `yaml:"Sources"`
+	Kubo    Kubo     `yaml:"Kubo"`
 	Port    uint     `yaml:"Port"`
+	Sources []Source `yaml:"Sources"`
+}
+
+type Kubo struct {
+	MFS string `yaml:"MFS"`
 }
 
 type Source struct {
@@ -75,7 +80,16 @@ func read(filename string) (Config, error) {
 }
 
 func create(filename string) error {
-	data, err := yaml.Marshal(Config{Port: 9090})
+	name, err := AppName()
+	if err != nil {
+		return fmt.Errorf("failed to get app name: %w", err)
+	}
+
+	data, err := yaml.Marshal(Config{
+		Kubo:    Kubo{MFS: fmt.Sprintf("/%s", name)},
+		Port:    9090,
+		Sources: []Source{},
+	})
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
