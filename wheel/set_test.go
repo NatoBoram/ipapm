@@ -2,6 +2,7 @@ package wheel_test
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/NatoBoram/ipapm/wheel"
@@ -10,8 +11,9 @@ import (
 func TestValues(t *testing.T) {
 	set := wheel.NewSet("foo", "bar")
 	values := set.Values()
+	sort.Strings(values)
 
-	expected := []string{"foo", "bar"}
+	expected := []string{"bar", "foo"}
 	if eq := reflect.DeepEqual(values, expected); !eq {
 		t.Errorf("Expected %v, got %v", expected, values)
 	}

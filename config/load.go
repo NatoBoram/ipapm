@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/NatoBoram/ipapm/env"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -21,12 +22,9 @@ type Kubo struct {
 }
 
 type Source struct {
-	Types         []string `yaml:"Types"`
-	URIs          []string `yaml:"URIs"`
-	Suites        []string `yaml:"Suites"`
-	Components    []string `yaml:"Components"`
-	Architectures []string `yaml:"Architectures"`
-	SignedBy      string   `yaml:"SignedBy"`
+	URIs     []string `yaml:"URIs"`
+	Suites   []string `yaml:"Suites"`
+	SignedBy string   `yaml:"SignedBy"`
 }
 
 type Env struct {
@@ -80,7 +78,7 @@ func read(filename string) (Config, error) {
 }
 
 func create(filename string) error {
-	name, err := AppName()
+	name, err := env.Name()
 	if err != nil {
 		return fmt.Errorf("failed to get app name: %w", err)
 	}

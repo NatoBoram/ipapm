@@ -30,27 +30,33 @@ func cycle(ctx context.Context, env env.Env, kubo *kubo.Client) error {
 		return fmt.Errorf("couldn't load config: %w", err)
 	}
 
-	mapped := apt.MapSources(config.Sources)
-	log.Printf("mapped: %v", mapped)
+	mapped, err := apt.MapSources(config.Sources)
+	if err != nil {
+		return fmt.Errorf("couldn't map sources: %w", err)
+	}
 
+	log.Printf("mapped: %v", mapped)
 	return nil
 }
 
 func start(ctx context.Context, env env.Env, kubo *kubo.Client) {
-	cycle(ctx, env, kubo)
+	// Wait for a very small amount of time for the initial start then reset using
+	// the full interval
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 
 	for {
-		timer := time.NewTimer(interval)
-
 		select {
 		case <-ctx.Done():
-			timer.Stop()
+			return
 		case <-timer.C:
 			err := cycle(ctx, env, kubo)
 			if err != nil {
 				log.Printf("Error during cycle: %s", err)
 			}
 		}
+
+		timer.Reset(interval)
 	}
 }
 
@@ -82,17 +88,16 @@ func run(ctx context.Context) error {
 	}
 	log.Printf("Connected to Kubo %s", v.String())
 
-	go start(ctx, env, kubo)
-
 	server := http.Server{
 		Addr:        fmt.Sprintf(":%d", config.Port),
 		BaseContext: func(net.Listener) context.Context { return ctx },
 		Handler:     api.New(api.Config{Kubo: kubo}),
 	}
-
 	served := make(chan error, 1)
 	go func() { served <- server.ListenAndServe() }()
 	log.Printf("Starting server at http://localhost:%d", config.Port)
+
+	go start(ctx, env, kubo)
 
 	select {
 	case <-ctx.Done():

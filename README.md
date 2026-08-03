@@ -40,10 +40,12 @@ Environment variables are loaded in the following order:
 - `.env.local`
 - `.env`
 
+These are the default values:
+
 ```env
-CONFIG_DIR=
+CONFIG_DIR=~/.config/ipapm
 KUBO_API_AUTH=
-KUBO_API_URL=
+KUBO_API_URL=http://localhost:5001
 ```
 
 ## License
