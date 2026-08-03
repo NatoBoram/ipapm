@@ -49,11 +49,3 @@ func MapSources(sources []config.Source) (MapSource, error) {
 
 	return mapped, nil
 }
-
-func (s Source) InReleaseURLs() {
-	var urls []*url.URL
-	for _, suite := range s.Suites.Values() {
-		url := s.URI.JoinPath("dists", suite, "InRelease")
-		urls = append(urls, url)
-	}
-}

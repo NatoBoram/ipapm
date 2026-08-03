@@ -16,6 +16,7 @@ import (
 	"github.com/NatoBoram/ipapm/apt"
 	"github.com/NatoBoram/ipapm/config"
 	"github.com/NatoBoram/ipapm/env"
+	h "github.com/NatoBoram/ipapm/http"
 	"github.com/NatoBoram/ipapm/kubo"
 )
 
@@ -24,7 +25,7 @@ const (
 	timeout  time.Duration = 5 * time.Second
 )
 
-func cycle(ctx context.Context, env env.Env, kubo *kubo.Client) error {
+func cycle(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Client) error {
 	config, err := config.Load(config.Env{CONFIG_DIR: env.CONFIG_DIR})
 	if err != nil {
 		return fmt.Errorf("couldn't load config: %w", err)
@@ -35,11 +36,22 @@ func cycle(ctx context.Context, env env.Env, kubo *kubo.Client) error {
 		return fmt.Errorf("couldn't map sources: %w", err)
 	}
 
-	log.Printf("mapped: %v", mapped)
+	for _, source := range mapped {
+		for suite := range source.Suites {
+			inRelease, err := client.InRelease(ctx, source.URI, suite)
+			if err != nil {
+				log.Printf("Error while fetching InRelease for %s (%s): %s", source.URI, suite, err)
+				continue
+			}
+
+			log.Printf("InRelease: %v", inRelease)
+		}
+	}
+
 	return nil
 }
 
-func start(ctx context.Context, env env.Env, kubo *kubo.Client) {
+func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client) {
 	// Wait for a very small amount of time for the initial start then reset using
 	// the full interval
 	timer := time.NewTimer(timeout)
@@ -50,7 +62,7 @@ func start(ctx context.Context, env env.Env, kubo *kubo.Client) {
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			err := cycle(ctx, env, kubo)
+			err := cycle(ctx, env, kubo, apt)
 			if err != nil {
 				log.Printf("Error during cycle: %s", err)
 			}
@@ -71,12 +83,23 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("couldn't load config: %w", err)
 	}
 
+	userAgent, err := h.UserAgent()
+	if err != nil {
+		return fmt.Errorf("couldn't get user agent: %w", err)
+	}
+	log.Printf("User-Agent: %s", userAgent)
+
+	client := h.New(new(h.Transport{
+		RoundTripper: http.DefaultTransport,
+		UserAgent:    userAgent,
+	}))
+
 	kubo, err := kubo.New(
 		kubo.Config{
 			KUBO_API_AUTH: env.KUBO_API_AUTH,
 			KUBO_API_URL:  env.KUBO_API_URL,
 		},
-		new(http.Client{Timeout: timeout}),
+		client,
 	)
 	if err != nil {
 		return fmt.Errorf("couldn't create Kubo client: %w", err)
@@ -88,6 +111,8 @@ func run(ctx context.Context) error {
 	}
 	log.Printf("Connected to Kubo %s", v.String())
 
+	apt := apt.New(client)
+
 	server := http.Server{
 		Addr:        fmt.Sprintf(":%d", config.Port),
 		BaseContext: func(net.Listener) context.Context { return ctx },
@@ -97,7 +122,7 @@ func run(ctx context.Context) error {
 	go func() { served <- server.ListenAndServe() }()
 	log.Printf("Starting server at http://localhost:%d", config.Port)
 
-	go start(ctx, env, kubo)
+	go start(ctx, env, kubo, apt)
 
 	select {
 	case <-ctx.Done():

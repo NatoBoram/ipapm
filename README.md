@@ -13,7 +13,7 @@ Mirrors APT repositories to IPFS.
   - [x] Connect to Kubo (`github.com/ipfs/kubo/client/rpc`)
 - [x] Get APT sources and config
   - [x] Merge sources per URIs
-  - [ ] Download InRelease files (`github.com/aptly-dev/aptly`)
+  - [x] Download InRelease files (`github.com/aptly-dev/aptly`)
   - [ ] Verify GPG keys (`github.com/ProtonMail/gopenpgp/v3`)
   - [ ] Get `InRelease` from MFS
   - [ ] Search differences

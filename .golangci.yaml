@@ -3,3 +3,12 @@ version: "2"
 formatters:
   enable:
     - gofumpt
+
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        - (*github.com/ipfs/kubo/client/rpc.Response).Close
+        - (*os.File).Close
+        - (io.Closer).Close
+        - os.Setenv
