@@ -24,7 +24,7 @@ type Kubo struct {
 type Source struct {
 	URIs     []string `yaml:"URIs"`
 	Suites   []string `yaml:"Suites"`
-	SignedBy string   `yaml:"SignedBy"`
+	SignedBy string   `yaml:"Signed-By"`
 }
 
 type Env struct {

@@ -11,11 +11,13 @@ import (
 type Config struct {
 	KUBO_API_AUTH string
 	KUBO_API_URL  string
+
+	MFS string
 }
 
 func New(config Config, c *http.Client) (*Client, error) {
 	kubo, err := rpc.NewURLApiWithClient(config.KUBO_API_URL, c)
-	client := new(Client{kubo})
+	client := new(Client{HttpApi: kubo, MFS: config.MFS})
 	if err != nil {
 		return client, fmt.Errorf("couldn't create a new api client: %w", err)
 	}

@@ -33,6 +33,9 @@ func (c *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (InR
 	return ParseInRelease(resp.Body)
 }
 
+// InRelease is a parsed `InRelease` file from a Debian Repository.
+//
+// See https://wiki.debian.org/DebianRepository/Format#A.22Release.22_files.
 type InRelease struct {
 	Hash          string
 	Architectures []string
@@ -46,15 +49,15 @@ type InRelease struct {
 	Version       string
 	AcquireByHash string
 
-	MD5Sum []Checksum
-	SHA1   []Checksum
-	SHA256 []Checksum
-	SHA512 []Checksum
+	MD5Sum []InReleaseSum
+	SHA1   []InReleaseSum
+	SHA256 []InReleaseSum
+	SHA512 []InReleaseSum
 
 	Raw string
 }
 
-type Checksum struct {
+type InReleaseSum struct {
 	Hash string
 	Size uint
 	Path string
@@ -74,13 +77,13 @@ const (
 func ParseInRelease(r io.Reader) (InRelease, error) {
 	scanner := bufio.NewScanner(r)
 	manifest := InRelease{
-		MD5Sum: []Checksum{},
-		SHA1:   []Checksum{},
-		SHA256: []Checksum{},
-		SHA512: []Checksum{},
+		MD5Sum: []InReleaseSum{},
+		SHA1:   []InReleaseSum{},
+		SHA256: []InReleaseSum{},
+		SHA512: []InReleaseSum{},
 	}
 
-	sectionMap := map[InReleaseSection]*[]Checksum{
+	sectionMap := map[InReleaseSection]*[]InReleaseSum{
 		InReleaseSectionMD5Sum: &manifest.MD5Sum,
 		InReleaseSectionSHA1:   &manifest.SHA1,
 		InReleaseSectionSHA256: &manifest.SHA256,
@@ -153,7 +156,7 @@ func ParseInRelease(r io.Reader) (InRelease, error) {
 				continue
 			}
 
-			*ptr = append(*ptr, Checksum{
+			*ptr = append(*ptr, InReleaseSum{
 				Hash: hash,
 				Size: uint(size),
 				Path: path,

@@ -25,11 +25,12 @@ const (
 	timeout  time.Duration = 5 * time.Second
 )
 
-func cycle(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Client) error {
+func sync(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Client) error {
 	config, err := config.Load(config.Env{CONFIG_DIR: env.CONFIG_DIR})
 	if err != nil {
 		return fmt.Errorf("couldn't load config: %w", err)
 	}
+	kubo.MFS = config.Kubo.MFS
 
 	mapped, err := apt.MapSources(config.Sources)
 	if err != nil {
@@ -38,13 +39,44 @@ func cycle(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Clie
 
 	for _, source := range mapped {
 		for suite := range source.Suites {
-			inRelease, err := client.InRelease(ctx, source.URI, suite)
+			// Get InRelease file
+			next, err := client.InRelease(ctx, source.URI, suite)
 			if err != nil {
 				log.Printf("Error while fetching InRelease for %s (%s): %s", source.URI, suite, err)
 				continue
 			}
+			log.Printf("Got InRelease file from %s (%s)", source.URI, suite)
 
-			log.Printf("InRelease: %v", inRelease)
+			// Verify signature
+			err = verifyPgp(source.SignedBy, next.Raw)
+			if err != nil {
+				log.Printf("Failed to verify PGP signature for %s (%s): %s", source.URI, suite, err)
+				continue
+			}
+			log.Printf("Verified signature for %s (%s)", source.URI, suite)
+
+			// Get InRelease from MFS
+			previous, err := kubo.InRelease(ctx, source.URI, suite)
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				log.Printf("Error while fetching InRelease from MFS for %s (%s): %s", source.URI, suite, err)
+				continue
+			}
+
+			if errors.Is(err, os.ErrNotExist) {
+				log.Printf("No previous InRelease file in MFS for %s (%s)", source.URI, suite)
+				err := syncAll(ctx, kubo, client, source, suite, next)
+				if err != nil {
+					log.Printf("Error while syncing %s (%s): %s", source.URI, suite, err)
+				}
+				continue
+			}
+
+			log.Printf("Got previous InRelease file from MFS for %s (%s)", source.URI, suite)
+			err = syncDiff(ctx, kubo, client, source, suite, next, previous)
+			if err != nil {
+				log.Printf("Error while syncing diff for %s (%s): %s", source.URI, suite, err)
+				continue
+			}
 		}
 	}
 
@@ -62,9 +94,9 @@ func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client)
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			err := cycle(ctx, env, kubo, apt)
+			err := sync(ctx, env, kubo, apt)
 			if err != nil {
-				log.Printf("Error during cycle: %s", err)
+				log.Printf("Error during sync: %s", err)
 			}
 		}
 
@@ -98,6 +130,7 @@ func run(ctx context.Context) error {
 		kubo.Config{
 			KUBO_API_AUTH: env.KUBO_API_AUTH,
 			KUBO_API_URL:  env.KUBO_API_URL,
+			MFS:           config.Kubo.MFS,
 		},
 		client,
 	)

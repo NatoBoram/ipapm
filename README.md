@@ -13,13 +13,21 @@ Mirrors APT repositories to IPFS.
   - [x] Connect to Kubo (`github.com/ipfs/kubo/client/rpc`)
 - [x] Get APT sources and config
   - [x] Merge sources per URIs
-  - [x] Download InRelease files (`github.com/aptly-dev/aptly`)
-  - [ ] Verify GPG keys (`github.com/ProtonMail/gopenpgp/v3`)
-  - [ ] Get `InRelease` from MFS
-  - [ ] Search differences
-  - [ ] Stream different files to MFS while verifying hashes
-  - [ ] Delete outdated files from MFS
-  - [ ] Commit `InRelease` file to MFS
+  - [x] Download InRelease files
+  - [x] Verify GPG keys (`github.com/ProtonMail/go-crypto/openpgp`)
+  - [x] Get `InRelease` from MFS (<https://docs.ipfs.tech/reference/kubo/rpc/#api-v0-files-read>)
+    - [x] Search differences
+    - [ ] Get `Packages` files
+      - [ ] Search differences
+      - [ ] Stream added/changed files to MFS while verifying hashes
+      - [ ] Delete outdated files from MFS
+      - [ ] Commit `Packages` files to MFS
+    - [ ] Get `Sources` files
+      - [ ] Search differences
+      - [ ] Stream added/changed files to MFS while verifying hashes
+      - [ ] Delete outdated files from MFS
+      - [ ] Commit `Sources` files to MFS
+    - [ ] Commit `InRelease` file to MFS
   - [ ] Publish to IPNS
 
 ## Docker
