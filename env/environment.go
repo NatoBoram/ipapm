@@ -38,8 +38,8 @@ func toEnvironment(s string) Environment {
 	return Development
 }
 
-// getEnvironment returns the current environment.
-func getEnvironment() Environment {
+// GetEnvironment returns the current environment.
+func GetEnvironment() Environment {
 	environment := toEnvironment(os.Getenv("GO_ENV"))
 	os.Setenv("GO_ENV", environment.String())
 	return environment

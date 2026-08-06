@@ -98,7 +98,8 @@ func TestParseInRelease(t *testing.T) {
 			{Hash: "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e", Size: 0, Path: "main/source/Sources"},
 			{Hash: "94dfd3dad6fb09c8e95b8c9e0189bab9a62c81da9a97d2b4d8c2b04e2ec2ff97ced059ea9979befcf240bdb65937a6f810b27602a9c65a3e712df720c9a9b946", Size: 28, Path: "main/source/Sources.gz"},
 		},
-		Raw: example,
+		Raw:      example,
+		Warnings: []error{},
 	}
 
 	// Field-by-field
@@ -143,6 +144,9 @@ func TestParseInRelease(t *testing.T) {
 	}
 	if eq := reflect.DeepEqual(inRelease.SHA512, expected.SHA512); !eq {
 		t.Errorf("Expected %v, got %v", expected.SHA512, inRelease.SHA512)
+	}
+	if eq := reflect.DeepEqual(inRelease.Warnings, expected.Warnings); !eq {
+		t.Errorf("Expected %v, got %v", expected.Warnings, inRelease.Warnings)
 	}
 
 	if t.Failed() {

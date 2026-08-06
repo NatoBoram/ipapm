@@ -14,7 +14,8 @@ import (
 // Env contains all the environment variables that are supported by this
 // program.
 type Env struct {
-	GO_ENV        Environment
+	GO_ENV Environment
+
 	CONFIG_DIR    string
 	KUBO_API_AUTH string
 	KUBO_API_URL  string
@@ -22,7 +23,7 @@ type Env struct {
 
 // loadEnv loads the environment variables from the .env files.
 func LoadEnv() (Env, error) {
-	environment := getEnvironment()
+	environment := GetEnvironment()
 
 	files := []string{
 		fmt.Sprintf(".env.%s.local", environment),
@@ -48,7 +49,8 @@ func LoadEnv() (Env, error) {
 	}
 
 	return Env{
-		GO_ENV:        getEnvironment(),
+		GO_ENV: environment,
+
 		CONFIG_DIR:    CONFIG_DIR,
 		KUBO_API_AUTH: os.Getenv("KUBO_API_AUTH"),
 		KUBO_API_URL:  KUBO_API_URL,

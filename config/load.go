@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/NatoBoram/ipapm/env"
@@ -38,7 +37,6 @@ func Load(env Env) (Config, error) {
 	}
 
 	name := ConfigFile(dir)
-	log.Printf("Loading config at %s", name)
 
 	config, err := read(name)
 	if errors.Is(err, os.ErrNotExist) {

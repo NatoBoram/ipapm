@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -55,6 +54,8 @@ type InRelease struct {
 	SHA512 []InReleaseSum
 
 	Raw string
+
+	Warnings []error
 }
 
 type InReleaseSum struct {
@@ -71,16 +72,17 @@ const (
 	InReleaseSectionSHA256 InReleaseSection = "SHA256"
 	InReleaseSectionSHA512 InReleaseSection = "SHA512"
 	InReleaseSectionPGP    InReleaseSection = "PGP"
-	InReleaseSectionNone   InReleaseSection = ""
+	InReleaseSectionRoot   InReleaseSection = "Root"
 )
 
 func ParseInRelease(r io.Reader) (InRelease, error) {
 	scanner := bufio.NewScanner(r)
 	manifest := InRelease{
-		MD5Sum: []InReleaseSum{},
-		SHA1:   []InReleaseSum{},
-		SHA256: []InReleaseSum{},
-		SHA512: []InReleaseSum{},
+		MD5Sum:   []InReleaseSum{},
+		SHA1:     []InReleaseSum{},
+		SHA256:   []InReleaseSum{},
+		SHA512:   []InReleaseSum{},
+		Warnings: []error{},
 	}
 
 	sectionMap := map[InReleaseSection]*[]InReleaseSum{
@@ -107,7 +109,7 @@ func ParseInRelease(r io.Reader) (InRelease, error) {
 		"Components":    &manifest.Components,
 	}
 
-	section := InReleaseSectionNone
+	section := InReleaseSectionRoot
 	for scanner.Scan() {
 		line := scanner.Text()
 		manifest.Raw += line + "\n"
@@ -136,7 +138,7 @@ func ParseInRelease(r io.Reader) (InRelease, error) {
 			section = InReleaseSectionPGP
 			continue
 		case "-----END PGP SIGNATURE-----":
-			section = InReleaseSectionNone
+			section = InReleaseSectionRoot
 			continue
 		}
 
@@ -152,7 +154,13 @@ func ParseInRelease(r io.Reader) (InRelease, error) {
 
 			size, err := strconv.ParseUint(parts[1], 10, 64)
 			if err != nil {
-				log.Printf("Error while parsing package size for %s: %s", path, err)
+				manifest.Warnings = append(
+					manifest.Warnings,
+					fmt.Errorf(
+						"error while parsing package size for %s in %s: %w",
+						path, section, err,
+					),
+				)
 				continue
 			}
 

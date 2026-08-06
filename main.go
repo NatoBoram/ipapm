@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -18,70 +18,8 @@ import (
 	"github.com/NatoBoram/ipapm/env"
 	h "github.com/NatoBoram/ipapm/http"
 	"github.com/NatoBoram/ipapm/kubo"
+	"github.com/NatoBoram/ipapm/log"
 )
-
-const (
-	interval time.Duration = 4 * time.Hour
-	timeout  time.Duration = 5 * time.Second
-)
-
-func sync(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Client) error {
-	config, err := config.Load(config.Env{CONFIG_DIR: env.CONFIG_DIR})
-	if err != nil {
-		return fmt.Errorf("couldn't load config: %w", err)
-	}
-	kubo.MFS = config.Kubo.MFS
-
-	mapped, err := apt.MapSources(config.Sources)
-	if err != nil {
-		return fmt.Errorf("couldn't map sources: %w", err)
-	}
-
-	for _, source := range mapped {
-		for suite := range source.Suites {
-			// Get InRelease file
-			next, err := client.InRelease(ctx, source.URI, suite)
-			if err != nil {
-				log.Printf("Error while fetching InRelease for %s (%s): %s", source.URI, suite, err)
-				continue
-			}
-			log.Printf("Got InRelease file from %s (%s)", source.URI, suite)
-
-			// Verify signature
-			err = verifyPgp(source.SignedBy, next.Raw)
-			if err != nil {
-				log.Printf("Failed to verify PGP signature for %s (%s): %s", source.URI, suite, err)
-				continue
-			}
-			log.Printf("Verified signature for %s (%s)", source.URI, suite)
-
-			// Get InRelease from MFS
-			previous, err := kubo.InRelease(ctx, source.URI, suite)
-			if err != nil && !errors.Is(err, os.ErrNotExist) {
-				log.Printf("Error while fetching InRelease from MFS for %s (%s): %s", source.URI, suite, err)
-				continue
-			}
-
-			if errors.Is(err, os.ErrNotExist) {
-				log.Printf("No previous InRelease file in MFS for %s (%s)", source.URI, suite)
-				err := syncAll(ctx, kubo, client, source, suite, next)
-				if err != nil {
-					log.Printf("Error while syncing %s (%s): %s", source.URI, suite, err)
-				}
-				continue
-			}
-
-			log.Printf("Got previous InRelease file from MFS for %s (%s)", source.URI, suite)
-			err = syncDiff(ctx, kubo, client, source, suite, next, previous)
-			if err != nil {
-				log.Printf("Error while syncing diff for %s (%s): %s", source.URI, suite, err)
-				continue
-			}
-		}
-	}
-
-	return nil
-}
 
 func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client) {
 	// Wait for a very small amount of time for the initial start then reset using
@@ -96,7 +34,7 @@ func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client)
 		case <-timer.C:
 			err := sync(ctx, env, kubo, apt)
 			if err != nil {
-				log.Printf("Error during sync: %s", err)
+				slog.WarnContext(ctx, "Error during sync", slog.Any("error", err))
 			}
 		}
 
@@ -110,6 +48,10 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("couldn't load environment variables: %w", err)
 	}
 
+	slog.InfoContext(
+		ctx, "Loading config",
+		slog.String("CONFIG_DIR", env.CONFIG_DIR),
+	)
 	config, err := config.Load(config.Env{CONFIG_DIR: env.CONFIG_DIR})
 	if err != nil {
 		return fmt.Errorf("couldn't load config: %w", err)
@@ -119,7 +61,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("couldn't get user agent: %w", err)
 	}
-	log.Printf("User-Agent: %s", userAgent)
+	slog.DebugContext(ctx, "User-Agent", slog.String("User-Agent", userAgent))
 
 	client := h.New(new(h.Transport{
 		RoundTripper: http.DefaultTransport,
@@ -140,9 +82,9 @@ func run(ctx context.Context) error {
 
 	v, err := kubo.Version(ctx)
 	if err != nil {
-		log.Printf("Couldn't connect to Kubo: %s", err)
+		slog.WarnContext(ctx, "Couldn't connect to Kubo", slog.Any("error", err))
 	}
-	log.Printf("Connected to Kubo %s", v.String())
+	slog.InfoContext(ctx, "Connected to Kubo", slog.String("version", v.String()))
 
 	apt := apt.New(client)
 
@@ -153,7 +95,10 @@ func run(ctx context.Context) error {
 	}
 	served := make(chan error, 1)
 	go func() { served <- server.ListenAndServe() }()
-	log.Printf("Starting server at http://localhost:%d", config.Port)
+	slog.InfoContext(
+		ctx, "Starting server",
+		slog.String("url", fmt.Sprintf("http://localhost:%d", config.Port)),
+	)
 
 	go start(ctx, env, kubo, apt)
 
@@ -186,6 +131,10 @@ func run(ctx context.Context) error {
 }
 
 func main() {
+	GO_ENV := env.GetEnvironment()
+	logger := log.New(log.Config{GO_ENV: GO_ENV})
+	slog.SetDefault(logger)
+
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),
 		os.Interrupt, syscall.SIGTERM,
@@ -193,7 +142,7 @@ func main() {
 	defer cancel()
 
 	if err := run(ctx); err != nil {
-		log.Println("couldn't run service:", err)
+		slog.ErrorContext(ctx, "Couldn't run service", slog.Any("error", err))
 		os.Exit(1)
 	}
 }
