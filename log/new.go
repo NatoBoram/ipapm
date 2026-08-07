@@ -3,7 +3,6 @@ package log
 import (
 	"log/slog"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/NatoBoram/ipapm/env"
@@ -27,6 +26,7 @@ func handler(c Config) slog.Handler {
 
 	w := os.Stderr
 	return tint.NewTextHandler(w, new(tint.Options{
+		AddSource:   false,
 		Level:       slog.LevelDebug,
 		NoColor:     !supportscolor.Stderr().SupportsColor,
 		ReplaceAttr: replace,
@@ -35,8 +35,8 @@ func handler(c Config) slog.Handler {
 }
 
 var (
+	nord03 = gchalk.Hex(nord.Nord03.String())
 	nord04 = gchalk.Hex(nord.Nord04.String())
-	nord06 = gchalk.Hex(nord.Nord06.String())
 	nord11 = gchalk.Hex(nord.Nord11.String())
 	nord13 = gchalk.Hex(nord.Nord13.String())
 	nord14 = gchalk.Hex(nord.Nord14.String())
@@ -44,7 +44,9 @@ var (
 )
 
 func replace(groups []string, attr slog.Attr) slog.Attr {
-	if attr.Key == slog.LevelKey {
+	switch attr.Key {
+
+	case slog.LevelKey:
 		switch attr.Value.Any().(slog.Level) {
 		case slog.LevelDebug:
 			attr.Value = slog.StringValue(nord15("DEBUG"))
@@ -55,51 +57,27 @@ func replace(groups []string, attr slog.Attr) slog.Attr {
 		case slog.LevelError:
 			attr.Value = slog.StringValue(nord11("ERROR"))
 		}
-
 		return attr
-	}
 
-	// Strings
-	if attr.Key != slog.MessageKey && attr.Value.Kind() == slog.KindString {
+	case slog.MessageKey:
 		if value := attr.Value.String(); value != "" {
 			attr.Value = slog.StringValue(nord04(value))
 			return attr
 		}
+
+	case slog.TimeKey:
+		return attr
+	case slog.SourceKey:
+		return attr
+
 	}
 
-	// Message
-	if attr.Key == slog.MessageKey && attr.Value.Kind() == slog.KindString {
+	kind := attr.Value.Kind()
+	if kind != slog.KindGroup && kind != slog.KindLogValuer {
 		if value := attr.Value.String(); value != "" {
-			attr.Value = slog.StringValue(nord06(value))
+			attr.Value = slog.StringValue(nord03(value))
 			return attr
 		}
-	}
-
-	// Errors
-	if attr.Value.Kind() == slog.KindAny {
-		if value, ok := attr.Value.Any().(error); ok {
-			attr.Value = slog.StringValue(nord11(value.Error()))
-			return attr
-		}
-	}
-
-	// Numbers
-	switch attr.Value.Kind() {
-	case slog.KindFloat64:
-		value := strconv.FormatFloat(attr.Value.Float64(), 'f', -1, 64)
-		attr.Value = slog.StringValue(nord15(value))
-		return attr
-
-	case slog.KindInt64:
-		value := strconv.FormatInt(attr.Value.Int64(), 10)
-		attr.Value = slog.StringValue(nord15(value))
-		return attr
-
-	case slog.KindUint64:
-		value := strconv.FormatUint(attr.Value.Uint64(), 10)
-		attr.Value = slog.StringValue(nord15(value))
-		return attr
-
 	}
 
 	return attr
