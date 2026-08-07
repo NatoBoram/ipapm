@@ -15,11 +15,10 @@ type InReleaseDiff struct {
 }
 
 func (p InReleaseFiles) Diff(n InReleaseFiles) InReleaseDiff {
-	size := max(len(p), len(n))
 	o := InReleaseDiff{
-		Added:   make(InReleaseFiles, size),
-		Removed: wheel.NewSet[string](),
-		Changed: make(InReleaseFiles, size),
+		Added:   make(InReleaseFiles, len(n)),
+		Removed: wheel.MakeSet[string](len(p)),
+		Changed: make(InReleaseFiles, min(len(p), len(n))),
 	}
 
 	// From previous to next

@@ -8,6 +8,11 @@ func NewSet[T comparable](values ...T) Set[T] {
 	return s
 }
 
+func MakeSet[T comparable](size int) Set[T] {
+	s := make(Set[T], size)
+	return s
+}
+
 // Add appends new elements with specified values to the [Set].
 func (s Set[T]) Add(values ...T) {
 	for _, item := range values {

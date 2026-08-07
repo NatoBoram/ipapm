@@ -28,9 +28,9 @@ func sync(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Clien
 
 	for _, source := range mapped {
 		for suite := range source.Suites {
-			ctx = slogctx.Prepend(
+			ctx := slogctx.Prepend(
 				ctx,
-				"source", source.URI.String(),
+				"uri", source.URI.String(),
 				"suite", suite,
 			)
 
@@ -103,7 +103,31 @@ func syncAll(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
 	source apt.Source, suite string, next apt.InRelease,
 ) error {
-	slog.InfoContext(ctx, "All")
+	slog.InfoContext(ctx, "Syncing all files.")
+
+	files, err := next.Files()
+	if err != nil {
+		return fmt.Errorf("couldn't get files from InRelease: %w", err)
+	}
+
+	components := next.ByComponents(files)
+	for _, component := range components {
+		ctx := slogctx.Prepend(
+			ctx,
+			"component", component.Name,
+			"architecture", component.Architecture,
+		)
+
+		if component.Architecture == "source" {
+			// Implement `client.Sources(component.Name)`
+			slog.DebugContext(ctx, "Source")
+			continue
+		}
+
+		// Implement `client.Packages(component.Name, component.Architecture)`
+		slog.DebugContext(ctx, "Binary")
+	}
+
 	return nil
 }
 
@@ -117,12 +141,40 @@ func syncDiff(
 		return fmt.Errorf("couldn't get the diff between previous and next InRelease files: %s", err)
 	}
 
-	slog.InfoContext(
+	slog.DebugContext(
 		ctx, "Diff",
 		slog.Int("added", len(diff.Added)),
 		slog.Int("changed", len(diff.Changed)),
 		slog.Int("removed", len(diff.Removed)),
 	)
+
+	components := next.ByComponents(diff.Added)
+	for _, component := range components {
+		ctx := slogctx.Prepend(
+			ctx,
+			"component", component.Name,
+			"architecture", component.Architecture,
+		)
+
+		// Get the `Packages` and `Sources` files and add the entire thing.
+		slog.DebugContext(ctx, "Added")
+	}
+
+	components = next.ByComponents(diff.Changed)
+	for _, component := range components {
+		ctx := slogctx.Prepend(
+			ctx,
+			"component", component.Name,
+			"architecture", component.Architecture,
+		)
+
+		// Get the `Packages` and `Sources`, check the diff then
+		// create/update/delete files as needed.
+		slog.DebugContext(ctx, "Changed")
+	}
+
+	// For removed components and architectures, use `previous` to find all the
+	// files that need to be removed.
 
 	return nil
 }

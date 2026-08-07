@@ -72,8 +72,7 @@ func replace(groups []string, attr slog.Attr) slog.Attr {
 
 	}
 
-	kind := attr.Value.Kind()
-	if kind != slog.KindGroup && kind != slog.KindLogValuer {
+	if attr.Value.Kind() != slog.KindGroup {
 		if value := attr.Value.String(); value != "" {
 			attr.Value = slog.StringValue(nord03(value))
 			return attr
