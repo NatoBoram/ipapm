@@ -2,6 +2,7 @@ package apt
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -10,27 +11,6 @@ import (
 	"strconv"
 	"strings"
 )
-
-func (c *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (InRelease, error) {
-	target := uri.JoinPath("dists", suite, "InRelease")
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
-	if err != nil {
-		return InRelease{}, fmt.Errorf("failed to build request for %s: %w", target, err)
-	}
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return InRelease{}, fmt.Errorf("failed to fetch %s: %w", target, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return InRelease{}, fmt.Errorf("unexpected status code %d for %s", resp.StatusCode, target)
-	}
-
-	return ParseInRelease(resp.Body)
-}
 
 // InRelease is a parsed `InRelease` file from a Debian Repository.
 //
@@ -53,8 +33,7 @@ type InRelease struct {
 	SHA256 []InReleaseSum
 	SHA512 []InReleaseSum
 
-	Raw string
-
+	Raw      []byte
 	Warnings []error
 }
 
@@ -62,6 +41,27 @@ type InReleaseSum struct {
 	Hash string
 	Size uint
 	Path string
+}
+
+func (c *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (InRelease, error) {
+	target := uri.JoinPath("dists", suite, "InRelease")
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
+	if err != nil {
+		return InRelease{}, fmt.Errorf("failed to build request for %s: %w", target, err)
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return InRelease{}, fmt.Errorf("failed to fetch %s: %w", target, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return InRelease{}, fmt.Errorf("unexpected status code %d for %s", resp.StatusCode, target)
+	}
+
+	return ParseInRelease(resp.Body)
 }
 
 type InReleaseSection string
@@ -76,13 +76,19 @@ const (
 )
 
 func ParseInRelease(r io.Reader) (InRelease, error) {
-	scanner := bufio.NewScanner(r)
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return InRelease{}, fmt.Errorf("failed to read InRelease file: %w", err)
+	}
+
+	scanner := bufio.NewScanner(bytes.NewReader(raw))
 	manifest := InRelease{
 		MD5Sum:   []InReleaseSum{},
 		SHA1:     []InReleaseSum{},
 		SHA256:   []InReleaseSum{},
 		SHA512:   []InReleaseSum{},
 		Warnings: []error{},
+		Raw:      raw,
 	}
 
 	sectionMap := map[InReleaseSection]*[]InReleaseSum{
@@ -112,7 +118,6 @@ func ParseInRelease(r io.Reader) (InRelease, error) {
 	section := InReleaseSectionRoot
 	for scanner.Scan() {
 		line := scanner.Text()
-		manifest.Raw += line + "\n"
 		trimmed := strings.TrimSpace(line)
 
 		// Skip

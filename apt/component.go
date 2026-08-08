@@ -8,17 +8,17 @@ import (
 type Component struct {
 	Name         string
 	Architecture string
-	Files        InReleaseFiles
+	Files        FileHashes
 }
 
-func (i InRelease) ByComponents(files InReleaseFiles) []Component {
+func (i InRelease) ByComponents(files FileHashes) []Component {
 	result := make([]Component, 0, len(i.Components)*len(i.Architectures))
 
 	for _, c := range i.Components {
 		for _, a := range i.Architectures {
 			prefix := archPrefix(c, a)
 
-			match := make(InReleaseFiles)
+			match := make(FileHashes)
 			for p, f := range files {
 				if strings.HasPrefix(p, prefix) {
 					match[p] = f

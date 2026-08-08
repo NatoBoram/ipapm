@@ -52,7 +52,7 @@ func sync(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Clien
 			slog.InfoContext(ctx, "Got InRelease file")
 
 			// Verify signature
-			err = verifyPgp(source.SignedBy, next.Raw)
+			err = verifyPgp(source.SignedBy, string(next.Raw))
 			if err != nil {
 				slog.ErrorContext(
 					ctx, "Failed to verify PGP signature",
