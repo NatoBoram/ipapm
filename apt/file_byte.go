@@ -1,6 +1,7 @@
 package apt
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"crypto/sha1"
@@ -8,14 +9,15 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"io"
 	"net/http"
 	"net/url"
 )
 
 type FileByte struct {
-	hashes FileHash
-	bytes  []byte
+	Hashes FileHash
+	Bytes  []byte
 }
 
 func (c *Client) File(
@@ -39,49 +41,70 @@ func (c *Client) File(
 		return FileByte{}, fmt.Errorf("unexpected status code %d for %s", resp.StatusCode, target)
 	}
 
-	// Stream and hash simultaneously
-	md5Hasher := md5.New()
-	sha1Hasher := sha1.New()
-	sha256Hasher := sha256.New()
-	sha512Hasher := sha512.New()
-	multiHasher := io.MultiWriter(md5Hasher, sha1Hasher, sha256Hasher, sha512Hasher)
+	multiHasher := makeHashers(file)
 
-	body, err := io.ReadAll(io.TeeReader(resp.Body, multiHasher))
+	buf := bytes.NewBuffer(make([]byte, 0, file.Size))
+	_, err = io.Copy(buf, io.TeeReader(resp.Body, multiHasher.writer))
 	if err != nil {
 		return FileByte{}, fmt.Errorf("failed to read response body for %s: %w", target, err)
 	}
+	body := buf.Bytes()
 
 	if uint(len(body)) != file.Size {
 		return FileByte{}, fmt.Errorf("size mismatch for %s: expected %d, got %d", file.Path, file.Size, len(body))
 	}
 
-	if file.MD5Sum != "" {
-		checksum := hex.EncodeToString(md5Hasher.Sum(nil))
-		if checksum != file.MD5Sum {
-			return FileByte{}, fmt.Errorf("MD5 mismatch for %s: expected %s, got %s", file.Path, file.MD5Sum, checksum)
+	for _, hasher := range multiHasher.hashers {
+		checksum := hex.EncodeToString(hasher.writer.Sum(nil))
+		if checksum != hasher.sum {
+			return FileByte{}, fmt.Errorf("%s mismatch for %s: expected %s, got %s", hasher.kind, file.Path, hasher.sum, checksum)
 		}
+	}
+
+	return FileByte{Bytes: body, Hashes: file}, nil
+}
+
+type hashers struct {
+	hashers []hasher
+	writer  io.Writer
+}
+
+type hasher struct {
+	sum    string
+	writer hash.Hash
+	kind   string
+}
+
+func makeHashers(file FileHash) hashers {
+	list := make([]hasher, 0, 4)
+	writers := make([]io.Writer, 0, 4)
+
+	if file.MD5Sum != "" {
+		writer := md5.New()
+		list = append(list, hasher{sum: file.MD5Sum, writer: writer, kind: "MD5"})
+		writers = append(writers, writer)
 	}
 
 	if file.SHA1 != "" {
-		checksum := hex.EncodeToString(sha1Hasher.Sum(nil))
-		if checksum != file.SHA1 {
-			return FileByte{}, fmt.Errorf("SHA1 mismatch for %s: expected %s, got %s", file.Path, file.SHA1, checksum)
-		}
+		writer := sha1.New()
+		list = append(list, hasher{sum: file.SHA1, writer: writer, kind: "SHA-1"})
+		writers = append(writers, writer)
 	}
 
 	if file.SHA256 != "" {
-		checksum := hex.EncodeToString(sha256Hasher.Sum(nil))
-		if checksum != file.SHA256 {
-			return FileByte{}, fmt.Errorf("SHA256 mismatch for %s: expected %s, got %s", file.Path, file.SHA256, checksum)
-		}
+		writer := sha256.New()
+		list = append(list, hasher{sum: file.SHA256, writer: writer, kind: "SHA-256"})
+		writers = append(writers, writer)
 	}
 
 	if file.SHA512 != "" {
-		checksum := hex.EncodeToString(sha512Hasher.Sum(nil))
-		if checksum != file.SHA512 {
-			return FileByte{}, fmt.Errorf("SHA512 mismatch for %s: expected %s, got %s", file.Path, file.SHA512, checksum)
-		}
+		writer := sha512.New()
+		list = append(list, hasher{sum: file.SHA512, writer: writer, kind: "SHA-512"})
+		writers = append(writers, writer)
 	}
 
-	return FileByte{bytes: body, hashes: file}, nil
+	return hashers{
+		hashers: list,
+		writer:  io.MultiWriter(writers...),
+	}
 }
