@@ -31,6 +31,8 @@ Mirrors APT repositories to IPFS.
       - [ ] Commit `Sources` files to MFS
     - [x] Commit `InRelease` file to MFS
   - [ ] Publish to IPNS
+- [ ] Parallelize downloads by URI
+- [ ] Progress bar for downloading files (`github.com/cheggaaa/pb/v3`)
 
 ## Docker
 
