@@ -11,7 +11,10 @@ type FileHash struct {
 	SHA512 string
 
 	Size uint
-	Path string
+
+	// Filename may begin with `${component}/` from [InRelease] or
+	// `pool/${suite}/` form [Packages].
+	Filename string
 }
 
 func (i InRelease) Files() (FileHashes, error) {
@@ -29,7 +32,7 @@ func (i InRelease) Files() (FileHashes, error) {
 		for _, sum := range target.sums {
 			file, ok := filemap[sum.Path]
 			if !ok {
-				file = FileHash{Size: sum.Size, Path: sum.Path}
+				file = FileHash{Size: sum.Size, Filename: sum.Path}
 			} else if file.Size != sum.Size {
 				return nil, fmt.Errorf("inconsistent file size for %s: %d vs %d", sum.Path, file.Size, sum.Size)
 			}
@@ -40,4 +43,9 @@ func (i InRelease) Files() (FileHashes, error) {
 	}
 
 	return filemap, nil
+}
+
+type filesTarget struct {
+	sums    []InReleaseSum
+	setHash func(file *FileHash, hash string)
 }

@@ -105,7 +105,7 @@ func run(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
 		// To put `^C` on its own line.

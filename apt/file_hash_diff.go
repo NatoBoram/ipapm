@@ -57,8 +57,3 @@ func (p InRelease) Diff(n InRelease) (FileHashesDiff, error) {
 
 	return pfiles.Diff(nfiles), nil
 }
-
-type filesTarget struct {
-	sums    []InReleaseSum
-	setHash func(file *FileHash, hash string)
-}

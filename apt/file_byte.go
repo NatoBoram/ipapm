@@ -24,7 +24,7 @@ func (c *Client) File(
 	ctx context.Context, uri *url.URL, suite string,
 	component Component, file FileHash,
 ) (FileByte, error) {
-	target := uri.JoinPath("dists", suite, file.Path)
+	target := uri.JoinPath("dists", suite, file.Filename)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
@@ -51,13 +51,13 @@ func (c *Client) File(
 	body := buf.Bytes()
 
 	if uint(len(body)) != file.Size {
-		return FileByte{}, fmt.Errorf("size mismatch for %s: expected %d, got %d", file.Path, file.Size, len(body))
+		return FileByte{}, fmt.Errorf("size mismatch for %s: expected %d, got %d", file.Filename, file.Size, len(body))
 	}
 
 	for _, hasher := range multiHasher.hashers {
 		checksum := hex.EncodeToString(hasher.writer.Sum(nil))
 		if checksum != hasher.sum {
-			return FileByte{}, fmt.Errorf("%s mismatch for %s: expected %s, got %s", hasher.kind, file.Path, hasher.sum, checksum)
+			return FileByte{}, fmt.Errorf("%s mismatch for %s: expected %s, got %s", hasher.kind, file.Filename, hasher.sum, checksum)
 		}
 	}
 

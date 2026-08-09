@@ -41,15 +41,25 @@ type Package struct {
 	Warnings []error
 }
 
-type ComponentBytes struct {
-	Component     Component
-	Packages      Packages
-	PackagesBytes []FileByte
+func (p Package) FileHash() FileHash {
+	return FileHash{
+		MD5Sum:   p.MD5sum,
+		SHA1:     p.SHA1,
+		SHA256:   p.SHA256,
+		SHA512:   p.SHA512,
+		Size:     p.Size,
+		Filename: p.Filename,
+	}
+}
+
+type PackagesBytes struct {
+	Packages  Packages
+	FileBytes []FileByte
 }
 
 func (c *Client) Packages(
 	ctx context.Context, uri *url.URL, suite string, component Component,
-) (ComponentBytes, error) {
+) (PackagesBytes, error) {
 	downloads := make([]FileByte, 0, len(component.Files))
 
 	for name, file := range component.Files {
@@ -60,7 +70,7 @@ func (c *Client) Packages(
 
 		downloaded, err := c.File(ctx, uri, suite, component, file)
 		if err != nil {
-			return ComponentBytes{}, fmt.Errorf("couldn't download Packages: %w", err)
+			return PackagesBytes{}, fmt.Errorf("couldn't download Packages: %w", err)
 		}
 
 		downloads = append(downloads, downloaded)
@@ -68,24 +78,23 @@ func (c *Client) Packages(
 
 	uncompressed, err := uncompressPackages(downloads)
 	if err != nil {
-		return ComponentBytes{}, fmt.Errorf("couldn't uncompress Packages: %w", err)
+		return PackagesBytes{}, fmt.Errorf("couldn't uncompress Packages: %w", err)
 	}
 
 	parsed, err := ParsePackages(uncompressed)
 	if err != nil {
-		return ComponentBytes{}, fmt.Errorf("couldn't parse Packages: %w", err)
+		return PackagesBytes{}, fmt.Errorf("couldn't parse Packages: %w", err)
 	}
 
-	return ComponentBytes{
-		Component:     component,
-		Packages:      parsed,
-		PackagesBytes: downloads,
+	return PackagesBytes{
+		FileBytes: downloads,
+		Packages:  parsed,
 	}, nil
 }
 
 func uncompressPackages(downloads []FileByte) (io.Reader, error) {
 	for _, download := range downloads {
-		if path.Base(download.Hashes.Path) != "Packages" {
+		if path.Base(download.Hashes.Filename) != "Packages" {
 			continue
 		}
 
@@ -93,7 +102,7 @@ func uncompressPackages(downloads []FileByte) (io.Reader, error) {
 	}
 
 	for _, download := range downloads {
-		base := path.Base(download.Hashes.Path)
+		base := path.Base(download.Hashes.Filename)
 		if base == "Packages.gz" {
 			r := bytes.NewReader(download.Bytes)
 			u, err := gzip.NewReader(r)

@@ -17,17 +17,19 @@ Mirrors APT repositories to IPFS.
   - [x] Verify GPG keys (`github.com/ProtonMail/go-crypto/openpgp`)
   - [x] Get `InRelease` from MFS (<https://docs.ipfs.tech/reference/kubo/rpc/#api-v0-files-read>)
     - [x] Search differences
-    - [ ] Get `Packages` files
+    - [x] Get `Packages` files
+      - [x] Sync all if no previous
       - [ ] Search differences
-      - [ ] Stream added/changed files to MFS while verifying hashes
+      - [x] Stream added/changed files to MFS while verifying hashes
       - [ ] Delete outdated files from MFS
-      - [ ] Commit `Packages` files to MFS
+      - [x] Commit `Packages` files to MFS
     - [ ] Get `Sources` files
+      - [ ] Sync all if no previous
       - [ ] Search differences
       - [ ] Stream added/changed files to MFS while verifying hashes
       - [ ] Delete outdated files from MFS
       - [ ] Commit `Sources` files to MFS
-    - [ ] Commit `InRelease` file to MFS
+    - [x] Commit `InRelease` file to MFS
   - [ ] Publish to IPNS
 
 ## Docker

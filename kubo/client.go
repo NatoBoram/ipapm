@@ -1,11 +1,12 @@
 package kubo
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
-	"os"
 	"path"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 	"github.com/ipfs/kubo/client/rpc"
 )
 
-const timeout time.Duration = time.Second * 30
+const timeout time.Duration = time.Minute * 1
 
 type Client struct {
 	*rpc.HttpApi
@@ -49,27 +50,40 @@ func (k *Client) Version(ctx context.Context) (*semver.Version, error) {
 	return remoteVersion, nil
 }
 
-func (k *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (apt.InRelease, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
+func (k *Client) WriteInRelease(ctx context.Context, uri *url.URL, suite string, body apt.InRelease) error {
+	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, "InRelease")
+	return k.filesWrite(ctx, target, bytes.NewReader(body.Raw))
+}
 
-	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), "dists", suite, "InRelease")
-	if !path.IsAbs(target) {
-		target = "/" + target
-	}
+func (k *Client) WritePackages(ctx context.Context, uri *url.URL, suite string, file apt.FileByte) error {
+	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, file.Hashes.Filename)
+	return k.filesWrite(ctx, target, bytes.NewReader(file.Bytes))
+}
 
-	resp, err := k.Request("files/read", target).Send(ctx)
+func (k *Client) WritePackage(ctx context.Context, uri *url.URL, suite string, file apt.FileHash, body io.Reader) error {
+	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), file.Filename)
+	return k.filesWrite(ctx, target, body)
+}
+
+// filesWrite writes to the MFS.
+//
+// See https://docs.ipfs.tech/reference/kubo/rpc#api-v0-files-write.
+func (k *Client) filesWrite(ctx context.Context, fileName string, body io.Reader) error {
+	req := k.Request("files/write").
+		Arguments(fileName).
+		Option("create", true).
+		Option("parents", true).
+		Option("truncate", true).
+		FileBody(body)
+
+	resp, err := req.Send(ctx)
 	if err != nil {
-		return apt.InRelease{}, fmt.Errorf("failed to request InRelease file from MFS: %w", err)
-	}
-	if resp.Error != nil {
-		if resp.Error.Message == fmt.Sprintf("%s: %s", target, os.ErrNotExist) {
-			return apt.InRelease{}, fmt.Errorf("%s: %w", target, os.ErrNotExist)
-		}
-
-		return apt.InRelease{}, fmt.Errorf("kubo error (%d) \"%s\"", resp.Error.Code, resp.Error.Message)
+		return fmt.Errorf("failed to write %s to MFS: %w", fileName, err)
 	}
 	defer resp.Close()
+	if resp.Error != nil {
+		return fmt.Errorf("kubo error (%d) \"%s\"", resp.Error.Code, resp.Error.Message)
+	}
 
-	return apt.ParseInRelease(resp.Output)
+	return nil
 }

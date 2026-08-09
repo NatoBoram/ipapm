@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const timeout = 10 * time.Second
+const timeout = 1 * time.Minute
 
 type Transport struct {
 	RoundTripper http.RoundTripper

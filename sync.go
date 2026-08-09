@@ -103,7 +103,7 @@ func syncAll(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
 	source apt.Source, suite string, next apt.InRelease,
 ) error {
-	slog.InfoContext(ctx, "Syncing all files.")
+	slog.InfoContext(ctx, "Syncing all files")
 
 	files, err := next.Files()
 	if err != nil {
@@ -121,11 +121,65 @@ func syncAll(
 		if component.Architecture == "source" {
 			// Implement `client.Sources(component.Name)`
 			slog.DebugContext(ctx, "Source")
-			continue
+			return errors.New("source not implemented")
 		}
 
-		// Implement `client.Packages(component.Name, component.Architecture)`
-		slog.DebugContext(ctx, "Binary")
+		slog.InfoContext(ctx, "Getting Packages files")
+		packages, err := client.Packages(ctx, source.URI, suite, component)
+		if err != nil {
+			return fmt.Errorf("error while fetching Packages: %w", err)
+		}
+
+		for _, p := range packages.Packages {
+			for _, err := range p.Warnings {
+				slog.WarnContext(ctx, "Warning while parsing packages", "error", err)
+			}
+		}
+
+		slog.InfoContext(
+			ctx, "Got Packages",
+			"packages", len(packages.Packages), "files", len(packages.FileBytes),
+		)
+
+		for _, p := range packages.Packages {
+			ctx := slogctx.Prepend(
+				ctx,
+				"package", p.Package,
+				"version", p.Version,
+			)
+
+			slog.InfoContext(ctx, "Streaming package...")
+
+			r, err := client.Package(ctx, source.URI, p.FileHash())
+			if err != nil {
+				return fmt.Errorf("error while fetching package %s: %w", p.Filename, err)
+			}
+
+			err = kubo.WritePackage(ctx, source.URI, suite, p.FileHash(), r)
+			if err != nil {
+				return fmt.Errorf("error while writing %s to MFS: %w", p.Filename, err)
+			}
+		}
+
+		for _, f := range packages.FileBytes {
+			ctx := slogctx.Prepend(
+				ctx,
+				"Packages", f.Hashes.Filename,
+			)
+
+			slog.InfoContext(ctx, "Committing Packages file")
+
+			err = kubo.WritePackages(ctx, source.URI, suite, f)
+			if err != nil {
+				return fmt.Errorf("error while writing %s to MFS: %w", f.Hashes.Filename, err)
+			}
+		}
+	}
+
+	slog.InfoContext(ctx, "Committing InRelease file")
+	err = kubo.WriteInRelease(ctx, source.URI, suite, next)
+	if err != nil {
+		return fmt.Errorf("error while writing InRelease to MFS: %w", err)
 	}
 
 	return nil
