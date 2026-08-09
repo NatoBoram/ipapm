@@ -32,7 +32,7 @@ Mirrors APT repositories to IPFS.
     - [x] Commit `InRelease` file to MFS
   - [ ] Publish to IPNS
 - [ ] Parallelize downloads by URI
-- [ ] Progress bar for downloading files (`github.com/cheggaaa/pb/v3`)
+- [ ] Progress bar for downloading files (`github.com/cheggaaa/pb/v3`, `cmdenv.ProgressBarFullTemplate`)
 
 ## Docker
 
