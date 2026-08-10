@@ -19,9 +19,9 @@ Mirrors APT repositories to IPFS.
     - [x] Search differences
     - [x] Get `Packages` files
       - [x] Sync all if no previous
-      - [ ] Search differences
+      - [x] Search differences
       - [x] Stream added/changed files to MFS while verifying hashes
-      - [ ] Delete outdated files from MFS
+      - [x] Delete outdated files from MFS
       - [x] Commit `Packages` files to MFS
     - [ ] Get `Sources` files
       - [ ] Sync all if no previous

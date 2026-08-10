@@ -2,20 +2,18 @@ package apt
 
 import (
 	"fmt"
-
-	"github.com/NatoBoram/ipapm/wheel"
 )
 
 type FileHashesDiff struct {
 	Added   FileHashes
-	Removed wheel.Set[string]
+	Removed FileHashes
 	Changed FileHashes
 }
 
 func (p FileHashes) Diff(n FileHashes) FileHashesDiff {
 	o := FileHashesDiff{
 		Added:   make(FileHashes, len(n)),
-		Removed: wheel.MakeSet[string](len(p)),
+		Removed: make(FileHashes, len(p)),
 		Changed: make(FileHashes, min(len(p), len(n))),
 	}
 
@@ -23,7 +21,7 @@ func (p FileHashes) Diff(n FileHashes) FileHashesDiff {
 	for pk, pv := range p {
 		nv, ok := n[pk]
 		if !ok {
-			o.Removed.Add(pk)
+			o.Removed[pk] = pv
 			continue
 		}
 

@@ -2,8 +2,11 @@ package apt
 
 import "fmt"
 
+// FileHashes contains all the file entries of an [InRelease] file.
 type FileHashes map[string]FileHash
 
+// FileHash is a single file entry in an [InRelease] file. It's also used as a
+// lowest common denominator for [Packages] file entries.
 type FileHash struct {
 	MD5Sum string
 	SHA1   string
@@ -13,10 +16,11 @@ type FileHash struct {
 	Size uint
 
 	// Filename may begin with `${component}/` from [InRelease] or
-	// `pool/${suite}/` form [Packages].
+	// `pool/${suite}/` from [Packages].
 	Filename string
 }
 
+// Files obtains the file entries from an [InRelease] file as a [FileHashes].
 func (i InRelease) Files() (FileHashes, error) {
 	size := max(len(i.MD5Sum), len(i.SHA1), len(i.SHA256), len(i.SHA512))
 	filemap := make(FileHashes, size)

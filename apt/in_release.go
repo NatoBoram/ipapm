@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// InRelease is a parsed `InRelease` file from a Debian Repository.
+// InRelease is a parsed InRelease file from a Debian Repository.
 //
 // See https://wiki.debian.org/DebianRepository/Format#A.22Release.22_files.
 type InRelease struct {
@@ -37,12 +37,14 @@ type InRelease struct {
 	Warnings []error
 }
 
+// InReleaseSum is a single checksum entry in an [InRelease] file.
 type InReleaseSum struct {
 	Hash string
 	Size uint
 	Path string
 }
 
+// InRelease gets an [InRelease] file from a Debian Repository and parses it.
 func (c *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (InRelease, error) {
 	target := uri.JoinPath("dists", suite, "InRelease")
 
@@ -64,17 +66,18 @@ func (c *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (InR
 	return ParseInRelease(resp.Body)
 }
 
-type InReleaseSection string
+type inReleaseSection string
 
 const (
-	InReleaseSectionMD5Sum InReleaseSection = "MD5Sum"
-	InReleaseSectionSHA1   InReleaseSection = "SHA1"
-	InReleaseSectionSHA256 InReleaseSection = "SHA256"
-	InReleaseSectionSHA512 InReleaseSection = "SHA512"
-	InReleaseSectionPGP    InReleaseSection = "PGP"
-	InReleaseSectionRoot   InReleaseSection = "Root"
+	inReleaseSectionMD5Sum inReleaseSection = "MD5Sum"
+	inReleaseSectionSHA1   inReleaseSection = "SHA1"
+	inReleaseSectionSHA256 inReleaseSection = "SHA256"
+	inReleaseSectionSHA512 inReleaseSection = "SHA512"
+	inReleaseSectionPGP    inReleaseSection = "PGP"
+	inReleaseSectionRoot   inReleaseSection = "Root"
 )
 
+// ParseInRelease parses an [InRelease] file from a Debian Repository.
 func ParseInRelease(r io.Reader) (InRelease, error) {
 	raw, err := io.ReadAll(r)
 	if err != nil {
@@ -91,11 +94,11 @@ func ParseInRelease(r io.Reader) (InRelease, error) {
 		Raw:      raw,
 	}
 
-	sectionMap := map[InReleaseSection]*[]InReleaseSum{
-		InReleaseSectionMD5Sum: &manifest.MD5Sum,
-		InReleaseSectionSHA1:   &manifest.SHA1,
-		InReleaseSectionSHA256: &manifest.SHA256,
-		InReleaseSectionSHA512: &manifest.SHA512,
+	sectionMap := map[inReleaseSection]*[]InReleaseSum{
+		inReleaseSectionMD5Sum: &manifest.MD5Sum,
+		inReleaseSectionSHA1:   &manifest.SHA1,
+		inReleaseSectionSHA256: &manifest.SHA256,
+		inReleaseSectionSHA512: &manifest.SHA512,
 	}
 
 	stringMap := map[string]*string{
@@ -115,7 +118,7 @@ func ParseInRelease(r io.Reader) (InRelease, error) {
 		"Components":    &manifest.Components,
 	}
 
-	section := InReleaseSectionRoot
+	section := inReleaseSectionRoot
 	for scanner.Scan() {
 		line := scanner.Text()
 		trimmed := strings.TrimSpace(line)
@@ -128,22 +131,22 @@ func ParseInRelease(r io.Reader) (InRelease, error) {
 		// Sections
 		switch trimmed {
 		case "MD5Sum:":
-			section = InReleaseSectionMD5Sum
+			section = inReleaseSectionMD5Sum
 			continue
 		case "SHA1:":
-			section = InReleaseSectionSHA1
+			section = inReleaseSectionSHA1
 			continue
 		case "SHA256:":
-			section = InReleaseSectionSHA256
+			section = inReleaseSectionSHA256
 			continue
 		case "SHA512:":
-			section = InReleaseSectionSHA512
+			section = inReleaseSectionSHA512
 			continue
 		case "-----BEGIN PGP SIGNATURE-----":
-			section = InReleaseSectionPGP
+			section = inReleaseSectionPGP
 			continue
 		case "-----END PGP SIGNATURE-----":
-			section = InReleaseSectionRoot
+			section = inReleaseSectionRoot
 			continue
 		}
 
@@ -181,7 +184,7 @@ func ParseInRelease(r io.Reader) (InRelease, error) {
 		// PGP signatures may contain a version, which would conflict with
 		// InRelease's version. Example:
 		// Version: BSN Pgp v1.0.0.0
-		if section == InReleaseSectionPGP {
+		if section == inReleaseSectionPGP {
 			continue
 		}
 

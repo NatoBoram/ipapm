@@ -14,8 +14,10 @@ import (
 	"strings"
 )
 
+// Packages is an entire Packages file.
 type Packages []Package
 
+// Package is a single package entry in a [Packages] file.
 type Package struct {
 	Package       string
 	Version       string
@@ -41,6 +43,7 @@ type Package struct {
 	Warnings []error
 }
 
+// FileHash turns a [Package] info a [FileHash].
 func (p Package) FileHash() FileHash {
 	return FileHash{
 		MD5Sum:   p.MD5sum,
@@ -54,7 +57,7 @@ func (p Package) FileHash() FileHash {
 
 type PackagesBytes struct {
 	Packages  Packages
-	FileBytes []FileByte
+	FileBytes FileBytes
 }
 
 func (c *Client) Packages(
@@ -68,7 +71,7 @@ func (c *Client) Packages(
 			continue
 		}
 
-		downloaded, err := c.File(ctx, uri, suite, component, file)
+		downloaded, err := c.file(ctx, uri, suite, file)
 		if err != nil {
 			return PackagesBytes{}, fmt.Errorf("couldn't download Packages: %w", err)
 		}
@@ -76,7 +79,7 @@ func (c *Client) Packages(
 		downloads = append(downloads, downloaded)
 	}
 
-	uncompressed, err := uncompressPackages(downloads)
+	uncompressed, err := UncompressPackages(downloads)
 	if err != nil {
 		return PackagesBytes{}, fmt.Errorf("couldn't uncompress Packages: %w", err)
 	}
@@ -92,7 +95,7 @@ func (c *Client) Packages(
 	}, nil
 }
 
-func uncompressPackages(downloads []FileByte) (io.Reader, error) {
+func UncompressPackages(downloads []FileByte) (io.Reader, error) {
 	for _, download := range downloads {
 		if path.Base(download.Hashes.Filename) != "Packages" {
 			continue
