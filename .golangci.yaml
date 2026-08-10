@@ -8,6 +8,7 @@ linters:
   settings:
     errcheck:
       exclude-functions:
+        - (*compress/gzip.Reader).Close
         - (*github.com/ipfs/kubo/client/rpc.Response).Close
         - (*os.File).Close
         - (io.Closer).Close

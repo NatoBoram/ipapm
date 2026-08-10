@@ -177,7 +177,7 @@ func syncAll(
 
 func syncDiff(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
-	source apt.Source, suite string, next apt.InRelease, previous apt.InRelease,
+	source apt.Source, suite string, next, previous apt.InRelease,
 ) error {
 	nfiles, err := next.Files()
 	if err != nil {
