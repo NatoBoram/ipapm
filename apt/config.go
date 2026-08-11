@@ -8,21 +8,21 @@ import (
 	"github.com/NatoBoram/ipapm/wheel"
 )
 
-type MapSource map[string]Source
+type Configs map[string]Config
 
-type Source struct {
+type Config struct {
 	URI      *url.URL
 	Suites   wheel.Set[string]
 	SignedBy string
 }
 
-// MapSources turns [config.Source] into a [MapSource]. Since a source can have
+// MapConfigs turns [config.Source] into a [Configs]. Since a source can have
 // multiple URIs and those can collide between different sources, we need to
 // know which URI has which suites.
-func MapSources(sources []config.Source) (MapSource, error) {
-	mapped := make(MapSource)
+func MapConfigs(configs []config.Source) (Configs, error) {
+	mapped := make(Configs)
 
-	for _, source := range sources {
+	for _, source := range configs {
 		for _, uri := range source.URIs {
 			if m, ok := mapped[uri]; ok {
 				if m.SignedBy != source.SignedBy {
@@ -39,7 +39,7 @@ func MapSources(sources []config.Source) (MapSource, error) {
 				return nil, fmt.Errorf("invalid uri: %w", err)
 			}
 
-			mapped[uri] = Source{
+			mapped[uri] = Config{
 				URI:      url,
 				Suites:   wheel.NewSet(source.Suites...),
 				SignedBy: source.SignedBy,

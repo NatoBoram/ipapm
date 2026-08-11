@@ -22,7 +22,7 @@ func sync(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Clien
 	}
 	kubo.MFS = config.Kubo.MFS
 
-	mapped, err := apt.MapSources(config.Sources)
+	mapped, err := apt.MapConfigs(config.Sources)
 	if err != nil {
 		return fmt.Errorf("couldn't map sources: %w", err)
 	}
@@ -104,7 +104,7 @@ func sync(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Clien
 
 func syncAll(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
-	source apt.Source, suite string, next apt.InRelease,
+	source apt.Config, suite string, next apt.InRelease,
 ) error {
 	slog.InfoContext(ctx, "Syncing all files")
 
@@ -177,7 +177,7 @@ func syncAll(
 
 func syncDiff(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
-	source apt.Source, suite string, next, previous apt.InRelease,
+	source apt.Config, suite string, next, previous apt.InRelease,
 ) error {
 	nfiles, err := next.Files()
 	if err != nil {
@@ -317,7 +317,7 @@ func syncDiff(
 
 func upsertPackages(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
-	source apt.Source, suite string, packages apt.Packages,
+	source apt.Config, suite string, packages apt.Packages,
 ) error {
 	for _, p := range packages {
 		ctx := slogctx.Prepend(

@@ -10,7 +10,7 @@ import (
 	"github.com/NatoBoram/ipapm/wheel"
 )
 
-func TestMapSources(t *testing.T) {
+func TestMapConfigs(t *testing.T) {
 	sources := []config.Source{
 		{
 			URIs:     []string{"https://example.org"},
@@ -29,12 +29,12 @@ func TestMapSources(t *testing.T) {
 		},
 	}
 
-	merged, err := apt.MapSources(sources)
+	merged, err := apt.MapConfigs(sources)
 	if err != nil {
 		t.Fatalf("MapSources returned an error: %v", err)
 	}
 
-	expected := apt.MapSource{
+	expected := apt.Configs{
 		"https://example.org": {
 			URI:      new(url.URL{Scheme: "https", Host: "example.org"}),
 			Suites:   wheel.Set[string]{"noble": {}},

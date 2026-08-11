@@ -126,11 +126,11 @@ func UncompressPackages(downloads []FileByte) (io.Reader, error) {
 	return nil, errors.New("no supported Packages file found")
 }
 
-type PackagesSection string
+type packagesSection string
 
 const (
-	PackagesSectionDescription PackagesSection = "Description"
-	PackagesSectionRoot        PackagesSection = "Root"
+	packagesSectionDescription packagesSection = "Description"
+	packagesSectionRoot        packagesSection = "Root"
 )
 
 func ParsePackages(r io.Reader) (Packages, error) {
@@ -138,7 +138,7 @@ func ParsePackages(r io.Reader) (Packages, error) {
 	scanner := bufio.NewScanner(r)
 
 	current := Package{}
-	section := PackagesSectionRoot
+	section := packagesSectionRoot
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -153,13 +153,13 @@ func ParsePackages(r io.Reader) (Packages, error) {
 			}
 
 			current = Package{}
-			section = PackagesSectionRoot
+			section = packagesSectionRoot
 			continue
 		}
 
 		// Sections
 		if strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") {
-			if section == PackagesSectionDescription {
+			if section == packagesSectionDescription {
 				if trimmed == "." {
 					current.Description += "\n\n"
 					continue
@@ -173,9 +173,11 @@ func ParsePackages(r io.Reader) (Packages, error) {
 				current.Description += " " + trimmed
 				continue
 			}
+
+			continue
 		}
 
-		section = PackagesSectionRoot
+		section = packagesSectionRoot
 
 		// Key-values
 		split := strings.SplitN(trimmed, ":", 2)
@@ -213,7 +215,7 @@ func ParsePackages(r io.Reader) (Packages, error) {
 		case "Maintainer":
 			current.Maintainer = value
 		case "Description":
-			section = PackagesSectionDescription
+			section = packagesSectionDescription
 			current.Description = value
 		case "Homepage":
 			parsed, err := url.Parse(value)
