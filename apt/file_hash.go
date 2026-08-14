@@ -1,6 +1,9 @@
 package apt
 
-import "fmt"
+import (
+	"fmt"
+	"path"
+)
 
 // FileHashes contains all the file entries of an [InRelease] file.
 type FileHashes map[string]FileHash
@@ -15,17 +18,18 @@ type FileHash struct {
 
 	Size uint
 
-	// Filename may begin with `${component}/` from [InRelease] or
-	// `pool/${suite}/` from [Packages].
+	// Filename may begin with `${component}/` from [InRelease], `pool/${suite}/`
+	// from [Packages] or `pool/${suite}/` from [Source].
 	Filename string
 }
 
-// Files obtains the file entries from an [InRelease] file as a [FileHashes].
-func (i InRelease) Files() (FileHashes, error) {
+// FileHashes obtains the file entries from an [InRelease] file as a
+// [FileHashes].
+func (i InRelease) FileHashes() (FileHashes, error) {
 	size := max(len(i.MD5Sum), len(i.SHA1), len(i.SHA256), len(i.SHA512))
 	filemap := make(FileHashes, size)
 
-	targets := []filesTarget{
+	targets := []irTarget{
 		{i.MD5Sum, func(file *FileHash, hash string) { file.MD5Sum = hash }},
 		{i.SHA1, func(file *FileHash, hash string) { file.SHA1 = hash }},
 		{i.SHA256, func(file *FileHash, hash string) { file.SHA256 = hash }},
@@ -49,7 +53,56 @@ func (i InRelease) Files() (FileHashes, error) {
 	return filemap, nil
 }
 
-type filesTarget struct {
+type irTarget struct {
 	sums    []InReleaseSum
+	setHash func(file *FileHash, hash string)
+}
+
+// FileHash turns a [Package] info a [FileHash].
+func (p Package) FileHash() FileHash {
+	return FileHash{
+		MD5Sum:   p.MD5sum,
+		SHA1:     p.SHA1,
+		SHA256:   p.SHA256,
+		SHA512:   p.SHA512,
+		Size:     p.Size,
+		Filename: p.Filename,
+	}
+}
+
+// FileHash turns a [Source] info a [FileHashes].
+func (s Source) FileHashes() (FileHashes, error) {
+	size := max(
+		len(s.Files),
+		len(s.ChecksumsSha1), len(s.ChecksumsSha256), len(s.ChecksumsSha512),
+	)
+	filemap := make(FileHashes, size)
+
+	targets := []sTarget{
+		{s.Files, func(file *FileHash, hash string) { file.MD5Sum = hash }},
+		{s.ChecksumsSha1, func(file *FileHash, hash string) { file.SHA1 = hash }},
+		{s.ChecksumsSha256, func(file *FileHash, hash string) { file.SHA256 = hash }},
+		{s.ChecksumsSha512, func(file *FileHash, hash string) { file.SHA512 = hash }},
+	}
+
+	for _, target := range targets {
+		for _, sum := range target.sums {
+			file, ok := filemap[sum.Name]
+			if !ok {
+				file = FileHash{Size: sum.Size, Filename: path.Join(s.Directory, sum.Name)}
+			} else if file.Size != sum.Size {
+				return nil, fmt.Errorf("inconsistent file size for %s: %d vs %d", sum.Name, file.Size, sum.Size)
+			}
+
+			target.setHash(&file, sum.Hash)
+			filemap[sum.Name] = file
+		}
+	}
+
+	return filemap, nil
+}
+
+type sTarget struct {
+	sums    []SourceSum
 	setHash func(file *FileHash, hash string)
 }

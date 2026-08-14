@@ -3,6 +3,7 @@ package apt
 import (
 	"bufio"
 	"bytes"
+	"compress/bzip2"
 	"compress/gzip"
 	"context"
 	"errors"
@@ -43,18 +44,6 @@ type Package struct {
 	Warnings []error
 }
 
-// FileHash turns a [Package] info a [FileHash].
-func (p Package) FileHash() FileHash {
-	return FileHash{
-		MD5Sum:   p.MD5sum,
-		SHA1:     p.SHA1,
-		SHA256:   p.SHA256,
-		SHA512:   p.SHA512,
-		Size:     p.Size,
-		Filename: p.Filename,
-	}
-}
-
 type PackagesBytes struct {
 	Packages  Packages
 	FileBytes FileBytes
@@ -65,12 +54,7 @@ func (c *Client) Packages(
 ) (PackagesBytes, error) {
 	downloads := make([]FileByte, 0, len(component.Files))
 
-	for name, file := range component.Files {
-		base := path.Base(name)
-		if !strings.HasPrefix(base, "Packages") {
-			continue
-		}
-
+	for _, file := range component.Files {
 		downloaded, err := c.file(ctx, uri, suite, file)
 		if err != nil {
 			return PackagesBytes{}, fmt.Errorf("couldn't download Packages: %w", err)
@@ -106,7 +90,9 @@ func UncompressPackages(downloads []FileByte) (io.Reader, error) {
 
 	for _, download := range downloads {
 		base := path.Base(download.Hashes.Filename)
-		if base == "Packages.gz" {
+
+		switch base {
+		case "Packages.gz":
 			r := bytes.NewReader(download.Bytes)
 			u, err := gzip.NewReader(r)
 			if err != nil {
@@ -117,6 +103,16 @@ func UncompressPackages(downloads []FileByte) (io.Reader, error) {
 			uncompressed, err := io.ReadAll(u)
 			if err != nil {
 				return nil, fmt.Errorf("failed to decompress gzip stream: %w", err)
+			}
+
+			return bytes.NewReader(uncompressed), nil
+		case "Packages.bz2":
+			r := bytes.NewReader(download.Bytes)
+			u := bzip2.NewReader(r)
+
+			uncompressed, err := io.ReadAll(u)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decompress bzip2 stream: %w", err)
 			}
 
 			return bytes.NewReader(uncompressed), nil

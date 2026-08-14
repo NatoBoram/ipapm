@@ -9,7 +9,7 @@ import (
 	"net/url"
 )
 
-func (c *Client) Package(ctx context.Context, uri *url.URL, file FileHash) (io.ReadCloser, error) {
+func (c *Client) Stream(ctx context.Context, uri *url.URL, file FileHash) (io.ReadCloser, error) {
 	target := uri.JoinPath(file.Filename)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)

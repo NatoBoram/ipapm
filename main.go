@@ -52,7 +52,7 @@ func run(ctx context.Context) error {
 		ctx, "Loading config",
 		slog.String("CONFIG_DIR", env.CONFIG_DIR),
 	)
-	config, err := config.Load(config.Env{CONFIG_DIR: env.CONFIG_DIR})
+	config, err := config.Load(config.Env{CONFIG_DIR: env.CONFIG_DIR, Name: env.Name})
 	if err != nil {
 		return fmt.Errorf("couldn't load config: %w", err)
 	}

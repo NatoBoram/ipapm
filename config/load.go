@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/NatoBoram/ipapm/env"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -28,6 +27,7 @@ type Source struct {
 
 type Env struct {
 	CONFIG_DIR string
+	Name       string
 }
 
 func Load(env Env) (Config, error) {
@@ -40,7 +40,7 @@ func Load(env Env) (Config, error) {
 
 	config, err := read(name)
 	if errors.Is(err, os.ErrNotExist) {
-		err := create(name)
+		err := create(env.Name, name)
 		if err != nil {
 			return Config{}, fmt.Errorf("couldn't create config: %w", err)
 		}
@@ -75,12 +75,7 @@ func read(filename string) (Config, error) {
 	return c, err
 }
 
-func create(filename string) error {
-	name, err := env.Name()
-	if err != nil {
-		return fmt.Errorf("failed to get app name: %w", err)
-	}
-
+func create(name, filename string) error {
 	data, err := yaml.Marshal(Config{
 		Kubo:    Kubo{MFS: fmt.Sprintf("/%s", name)},
 		Port:    9090,

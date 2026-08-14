@@ -1,0 +1,255 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"os"
+	"slices"
+
+	"github.com/NatoBoram/ipapm/apt"
+	"github.com/NatoBoram/ipapm/kubo"
+	slogctx "github.com/veqryn/slog-context"
+)
+
+func syncDiff(
+	ctx context.Context, kubo *kubo.Client, client *apt.Client,
+	config apt.Config, suite string, next, previous apt.InRelease,
+) error {
+	nfiles, err := next.FileHashes()
+	if err != nil {
+		return fmt.Errorf("couldn't get files from next InRelease: %w", err)
+	}
+	ncomponents := next.ByComponents(nfiles)
+
+	pfiles, err := previous.FileHashes()
+	if err != nil {
+		return fmt.Errorf("couldn't get files from previous InRelease: %w", err)
+	}
+	pcomponents := previous.ByComponents(pfiles)
+
+	diffComponents := pcomponents.Diff(ncomponents)
+	upsertComponents := slices.Concat(diffComponents.Added, diffComponents.Changed)
+
+	for _, component := range upsertComponents {
+		ctx := slogctx.Prepend(
+			ctx,
+			"component", component.Name,
+			"architecture", component.Architecture,
+		)
+
+		if component.Architecture == "source" {
+			err := syncDiffSources(ctx, kubo, client, config, suite, component)
+			if err != nil {
+				return fmt.Errorf("error while syncing sources: %w", err)
+			}
+		} else {
+			err := syncDiffPackages(ctx, kubo, client, config, suite, component)
+			if err != nil {
+				return fmt.Errorf("error while syncing packages: %w", err)
+			}
+		}
+	}
+
+	// Remove components
+	for _, component := range diffComponents.Removed {
+		ctx := slogctx.Prepend(
+			ctx,
+			"component", component.Name,
+			"architecture", component.Architecture,
+		)
+
+		slog.InfoContext(ctx, "Removing component from MFS")
+		err = kubo.RemoveComponent(ctx, config.URI, suite, component)
+		if err != nil {
+			return fmt.Errorf("error while removing %s/%s from MFS: %w", component.Name, component.Architecture, err)
+		}
+	}
+
+	slog.InfoContext(ctx, "Committing InRelease file")
+	err = kubo.WriteInRelease(ctx, config.URI, suite, next)
+	if err != nil {
+		return fmt.Errorf("error while writing InRelease to MFS: %w", err)
+	}
+
+	return nil
+}
+
+func syncDiffSources(
+	ctx context.Context, kubo *kubo.Client, client *apt.Client,
+	config apt.Config, suite string, component apt.Component,
+) error {
+	sources, err := client.Sources(ctx, config.URI, suite, component)
+	if err != nil {
+		return fmt.Errorf("couldn't download Sources: %w", err)
+	}
+
+	slog.InfoContext(
+		ctx, "Got next Sources",
+		"sources", len(sources.Sources),
+		"files", len(sources.FileBytes),
+	)
+
+	psources, err := kubo.Sources(ctx, config.URI, suite, component)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("error while fetching previous Sources: %w", err)
+	}
+
+	slog.InfoContext(
+		ctx, "Got previous sources",
+		"sources", len(psources.Sources), "files", len(psources.FileBytes),
+	)
+
+	diff, err := psources.Sources.Diff(sources.Sources)
+	if err != nil {
+		return fmt.Errorf("error while diffing sources: %w", err)
+	}
+
+	// Upsert sources
+	upsert := slices.Concat(diff.Added, diff.Changed)
+	err = upsertSources(ctx, kubo, client, config, upsert)
+	if err != nil {
+		return fmt.Errorf("error while upserting sources: %w", err)
+	}
+
+	// Remove sources
+	for _, removed := range diff.Removed {
+		ctx := slogctx.Prepend(
+			ctx,
+			"package", removed.Package,
+			"version", removed.Version,
+		)
+
+		slog.InfoContext(ctx, "Removing source from MFS")
+		err = kubo.RemoveSource(ctx, config.URI, suite, removed)
+		if err != nil {
+			return fmt.Errorf("error while removing %s from MFS: %w", removed.Package, err)
+		}
+	}
+
+	srcDiff := psources.FileBytes.Diff(sources.FileBytes)
+
+	// Upsert Sources
+	upsertSrc := slices.Concat(srcDiff.Added, srcDiff.Changed)
+	for _, f := range upsertSrc {
+		ctx := slogctx.Prepend(
+			ctx,
+			"Sources", f.Hashes.Filename,
+		)
+
+		slog.InfoContext(ctx, "Committing Sources file")
+
+		err = kubo.WriteSources(ctx, config.URI, suite, f)
+		if err != nil {
+			return fmt.Errorf("error while writing %s to MFS: %w", f.Hashes.Filename, err)
+		}
+	}
+
+	// Remove Sources
+	for _, f := range srcDiff.Removed {
+		ctx := slogctx.Prepend(
+			ctx,
+			"Sources", f.Hashes.Filename,
+		)
+
+		slog.InfoContext(ctx, "Removing Sources file from MFS")
+		err = kubo.RemoveSources(ctx, config.URI, suite, f)
+		if err != nil {
+			return fmt.Errorf("error while removing %s from MFS: %w", f.Hashes.Filename, err)
+		}
+	}
+
+	return nil
+}
+
+func syncDiffPackages(
+	ctx context.Context, kubo *kubo.Client, client *apt.Client,
+	config apt.Config, suite string, component apt.Component,
+) error {
+	slog.InfoContext(ctx, "Getting Packages files")
+	npackages, err := client.Packages(ctx, config.URI, suite, component)
+	if err != nil {
+		return fmt.Errorf("error while fetching Packages: %w", err)
+	}
+
+	for _, p := range npackages.Packages {
+		for _, err := range p.Warnings {
+			slog.WarnContext(ctx, "Warning while parsing packages", "error", err)
+		}
+	}
+
+	slog.InfoContext(
+		ctx, "Got next Packages",
+		"packages", len(npackages.Packages),
+		"files", len(npackages.FileBytes),
+	)
+
+	ppackages, err := kubo.Packages(ctx, config.URI, suite, component)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("error while fetching previous Packages: %w", err)
+	}
+
+	slog.InfoContext(
+		ctx, "Got previous packages",
+		"packages", len(ppackages.Packages), "files", len(ppackages.FileBytes),
+	)
+
+	diff := ppackages.Packages.Diff(npackages.Packages)
+
+	// Upsert packages
+	upsert := slices.Concat(diff.Added, diff.Changed)
+	err = upsertPackages(ctx, kubo, client, config, upsert)
+	if err != nil {
+		return fmt.Errorf("error while upserting packages: %w", err)
+	}
+
+	// Remove packages
+	for _, removed := range diff.Removed {
+		ctx := slogctx.Prepend(
+			ctx,
+			"package", removed.Package,
+			"version", removed.Version,
+		)
+
+		slog.InfoContext(ctx, "Removing package from MFS")
+		err = kubo.RemovePackage(ctx, config.URI, suite, removed)
+		if err != nil {
+			return fmt.Errorf("error while removing %s from MFS: %w", removed.Filename, err)
+		}
+	}
+
+	pkgDiff := ppackages.FileBytes.Diff(npackages.FileBytes)
+
+	// Upsert Packages
+	pkgUpsert := slices.Concat(pkgDiff.Added, pkgDiff.Changed)
+	for _, f := range pkgUpsert {
+		ctx := slogctx.Prepend(
+			ctx,
+			"Packages", f.Hashes.Filename,
+		)
+
+		slog.InfoContext(ctx, "Committing Packages file")
+
+		err = kubo.WritePackages(ctx, config.URI, suite, f)
+		if err != nil {
+			return fmt.Errorf("error while writing %s to MFS: %w", f.Hashes.Filename, err)
+		}
+	}
+
+	// Remove Packages
+	for _, f := range pkgDiff.Removed {
+		ctx := slogctx.Prepend(
+			ctx,
+			"Packages", f.Hashes.Filename,
+		)
+
+		slog.InfoContext(ctx, "Removing Packages file from MFS")
+		err = kubo.RemovePackages(ctx, config.URI, suite, f)
+		if err != nil {
+			return fmt.Errorf("error while removing %s from MFS: %w", f.Hashes.Filename, err)
+		}
+	}
+
+	return nil
+}

@@ -23,14 +23,14 @@ Mirrors APT repositories to IPFS.
       - [x] Stream added/changed files to MFS while verifying hashes
       - [x] Delete outdated files from MFS
       - [x] Commit `Packages` files to MFS
-    - [ ] Get `Sources` files
-      - [ ] Sync all if no previous
-      - [ ] Search differences
-      - [ ] Stream added/changed files to MFS while verifying hashes
-      - [ ] Delete outdated files from MFS
-      - [ ] Commit `Sources` files to MFS
+    - [x] Get `Sources` files
+      - [x] Sync all if no previous
+      - [x] Search differences
+      - [x] Stream added/changed files to MFS while verifying hashes
+      - [x] Delete outdated files from MFS
+      - [x] Commit `Sources` files to MFS
     - [x] Commit `InRelease` file to MFS
-  - [ ] Publish to IPNS
+  - [x] Publish to IPNS
 - [ ] Parallelize downloads by URI
 - [ ] Progress bar for downloading files (`github.com/cheggaaa/pb/v3`, `cmdenv.ProgressBarFullTemplate`)
 

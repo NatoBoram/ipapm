@@ -11,14 +11,17 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Env contains all the environment variables that are supported by this
-// program.
+// Env contains all the environment variables and metadata that are supported by
+// this program.
 type Env struct {
 	GO_ENV Environment
 
 	CONFIG_DIR    string
 	KUBO_API_AUTH string
 	KUBO_API_URL  string
+
+	Name    string
+	Version string
 }
 
 // loadEnv loads the environment variables from the .env files.
@@ -38,7 +41,12 @@ func LoadEnv() (Env, error) {
 		}
 	}
 
-	CONFIG_DIR, err := envConfigDir()
+	name, version, err := readBuildInfo()
+	if err != nil {
+		return Env{}, fmt.Errorf("failed to extract build info: %w", err)
+	}
+
+	CONFIG_DIR, err := envConfigDir(name)
 	if err != nil {
 		return Env{}, fmt.Errorf("failed to determine config dir: %w", err)
 	}
@@ -54,24 +62,34 @@ func LoadEnv() (Env, error) {
 		CONFIG_DIR:    CONFIG_DIR,
 		KUBO_API_AUTH: os.Getenv("KUBO_API_AUTH"),
 		KUBO_API_URL:  KUBO_API_URL,
+
+		Name:    name,
+		Version: version,
 	}, nil
 }
 
-func Name() (string, error) {
+func readBuildInfo() (string, string, error) {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		return "", errors.New("failed to read the build info")
+		return "", "", errors.New("failed to read build info")
 	}
 
 	parts := strings.Split(info.Path, "/")
 	if len(parts) == 0 {
-		return "", errors.New("failed to parse the build info")
+		return "", "", errors.New("failed to parse build info")
 	}
 
-	return parts[len(parts)-1], nil
+	name := parts[len(parts)-1]
+
+	version := info.Main.Version
+	if version == "(devel)" {
+		version = "0.0.0"
+	}
+
+	return name, version, nil
 }
 
-func envConfigDir() (string, error) {
+func envConfigDir(name string) (string, error) {
 	CONFIG_DIR := os.Getenv("CONFIG_DIR")
 	if CONFIG_DIR != "" {
 		return CONFIG_DIR, nil
@@ -80,11 +98,6 @@ func envConfigDir() (string, error) {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user config dir: %w", err)
-	}
-
-	name, err := Name()
-	if err != nil {
-		return "", fmt.Errorf("failed to get app name: %w", err)
 	}
 
 	return path.Join(dir, name), nil

@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/NatoBoram/ipapm/apt"
 )
@@ -18,12 +17,7 @@ func (k *Client) Packages(ctx context.Context, uri *url.URL, suite string, compo
 
 	downloads := make([]apt.FileByte, 0, len(component.Files))
 
-	for name, file := range component.Files {
-		base := path.Base(name)
-		if !strings.HasPrefix(base, "Packages") {
-			continue
-		}
-
+	for _, file := range component.Files {
 		target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), "dists", suite, file.Filename)
 		if !path.IsAbs(target) {
 			target = "/" + target
@@ -55,7 +49,7 @@ func (k *Client) Packages(ctx context.Context, uri *url.URL, suite string, compo
 func (k *Client) fileByte(ctx context.Context, target string, file apt.FileHash) (apt.FileByte, error) {
 	resp, err := k.Request("files/read", target).Send(ctx)
 	if err != nil {
-		return apt.FileByte{}, fmt.Errorf("failed to request Packages file from MFS: %w", err)
+		return apt.FileByte{}, fmt.Errorf("failed to request file from MFS: %w", err)
 	}
 	defer resp.Close()
 	if resp.Error != nil {
@@ -76,4 +70,39 @@ func (k *Client) fileByte(ctx context.Context, target string, file apt.FileHash)
 		Bytes:  bytes,
 	}
 	return downloaded, nil
+}
+
+func (k *Client) Sources(ctx context.Context, uri *url.URL, suite string, component apt.Component) (apt.SourcesBytes, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	downloads := make([]apt.FileByte, 0, len(component.Files))
+
+	for _, file := range component.Files {
+		target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), "dists", suite, file.Filename)
+		if !path.IsAbs(target) {
+			target = "/" + target
+		}
+
+		downloaded, err := k.fileByte(ctx, target, file)
+		if err != nil {
+			return apt.SourcesBytes{}, fmt.Errorf("couldn't read Sources: %w", err)
+		}
+		downloads = append(downloads, downloaded)
+	}
+
+	uncompressed, err := apt.UncompressSources(downloads)
+	if err != nil {
+		return apt.SourcesBytes{}, fmt.Errorf("couldn't uncompress Sources: %w", err)
+	}
+
+	parsed, err := apt.ParseSources(uncompressed)
+	if err != nil {
+		return apt.SourcesBytes{}, fmt.Errorf("couldn't parse Sources: %w", err)
+	}
+
+	return apt.SourcesBytes{
+		FileBytes: downloads,
+		Sources:   parsed,
+	}, nil
 }

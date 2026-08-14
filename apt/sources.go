@@ -3,6 +3,7 @@ package apt
 import (
 	"bufio"
 	"bytes"
+	"compress/bzip2"
 	"compress/gzip"
 	"context"
 	"errors"
@@ -58,12 +59,7 @@ func (c *Client) Sources(
 ) (SourcesBytes, error) {
 	downloads := make([]FileByte, 0, len(component.Files))
 
-	for name, file := range component.Files {
-		base := path.Base(name)
-		if !strings.HasPrefix(base, "Sources") {
-			continue
-		}
-
+	for _, file := range component.Files {
 		downloaded, err := c.file(ctx, uri, suite, file)
 		if err != nil {
 			return SourcesBytes{}, fmt.Errorf("couldn't download Sources: %w", err)
@@ -98,7 +94,8 @@ func UncompressSources(downloads []FileByte) (io.Reader, error) {
 
 	for _, download := range downloads {
 		base := path.Base(download.Hashes.Filename)
-		if base == "Sources.gz" {
+		switch base {
+		case "Sources.gz":
 			r := bytes.NewReader(download.Bytes)
 			u, err := gzip.NewReader(r)
 			if err != nil {
@@ -109,6 +106,16 @@ func UncompressSources(downloads []FileByte) (io.Reader, error) {
 			uncompressed, err := io.ReadAll(u)
 			if err != nil {
 				return nil, fmt.Errorf("failed to decompress gzip stream: %w", err)
+			}
+
+			return bytes.NewReader(uncompressed), nil
+		case "Sources.bz2":
+			r := bytes.NewReader(download.Bytes)
+			u := bzip2.NewReader(r)
+
+			uncompressed, err := io.ReadAll(u)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decompress bz2 stream: %w", err)
 			}
 
 			return bytes.NewReader(uncompressed), nil

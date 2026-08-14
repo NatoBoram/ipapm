@@ -21,7 +21,17 @@ func (k *Client) WritePackages(ctx context.Context, uri *url.URL, suite string, 
 	return k.filesWrite(ctx, target, bytes.NewReader(file.Bytes))
 }
 
-func (k *Client) WritePackage(ctx context.Context, uri *url.URL, suite string, file apt.FileHash, body io.Reader) error {
+func (k *Client) WriteSources(ctx context.Context, uri *url.URL, suite string, file apt.FileByte) error {
+	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, file.Hashes.Filename)
+	return k.filesWrite(ctx, target, bytes.NewReader(file.Bytes))
+}
+
+func (k *Client) WritePackage(ctx context.Context, uri *url.URL, file apt.FileHash, body io.Reader) error {
+	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), file.Filename)
+	return k.filesWrite(ctx, target, body)
+}
+
+func (k *Client) WriteSource(ctx context.Context, uri *url.URL, file apt.FileHash, body io.Reader) error {
 	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), file.Filename)
 	return k.filesWrite(ctx, target, body)
 }
