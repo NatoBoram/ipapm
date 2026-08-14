@@ -95,6 +95,11 @@ func (k *Client) RemoveSources(ctx context.Context, uri *url.URL, suite string, 
 	return k.filesRm(ctx, target)
 }
 
+func (k *Client) RemoveFile(ctx context.Context, uri *url.URL, suite string, file apt.FileHash) error {
+	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, file.Filename)
+	return k.filesRm(ctx, target)
+}
+
 func (k *Client) filesRm(ctx context.Context, fileName string) error {
 	req := k.Request("files/rm").
 		Arguments(fileName).

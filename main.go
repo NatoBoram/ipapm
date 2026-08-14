@@ -32,7 +32,7 @@ func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client)
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			err := sync(ctx, env, kubo, apt)
+			err := syncConfig(ctx, env, kubo, apt)
 			if err != nil {
 				slog.WarnContext(ctx, "Error during sync", slog.Any("error", err))
 			}

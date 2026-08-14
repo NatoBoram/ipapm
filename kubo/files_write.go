@@ -36,6 +36,11 @@ func (k *Client) WriteSource(ctx context.Context, uri *url.URL, file apt.FileHas
 	return k.filesWrite(ctx, target, body)
 }
 
+func (k *Client) WriteFile(ctx context.Context, uri *url.URL, suite string, file apt.FileHash, body io.Reader) error {
+	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, file.Filename)
+	return k.filesWrite(ctx, target, body)
+}
+
 // filesWrite writes to the MFS.
 //
 // See https://docs.ipfs.tech/reference/kubo/rpc#api-v0-files-write.

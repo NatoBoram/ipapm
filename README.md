@@ -29,9 +29,10 @@ Mirrors APT repositories to IPFS.
       - [x] Stream added/changed files to MFS while verifying hashes
       - [x] Delete outdated files from MFS
       - [x] Commit `Sources` files to MFS
+    - [x] Handle `Contents` files
     - [x] Commit `InRelease` file to MFS
   - [x] Publish to IPNS
-- [ ] Parallelize downloads by URI
+- [x] Parallelize downloads by URI
 - [ ] Progress bar for downloading files (`github.com/cheggaaa/pb/v3`, `cmdenv.ProgressBarFullTemplate`)
 
 ## Docker

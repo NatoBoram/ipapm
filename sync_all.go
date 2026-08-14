@@ -42,10 +42,23 @@ func syncAll(
 		}
 	}
 
-	slog.InfoContext(ctx, "Committing InRelease file")
-	err = kubo.WriteInRelease(ctx, config.URI, suite, next)
-	if err != nil {
-		return fmt.Errorf("error while writing InRelease to MFS: %w", err)
+	for _, file := range files {
+		ctx := slogctx.Prepend(
+			ctx,
+			"file", file.Filename,
+		)
+		slog.InfoContext(ctx, "Committing file")
+
+		r, err := client.StreamFile(ctx, config.URI, suite, file)
+		if err != nil {
+			return fmt.Errorf("error while fetching file %s: %w", file.Filename, err)
+		}
+
+		err = kubo.WriteFile(ctx, config.URI, suite, file, r)
+		r.Close()
+		if err != nil {
+			return fmt.Errorf("error while writing %s to MFS: %w", file.Filename, err)
+		}
 	}
 
 	return nil

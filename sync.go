@@ -7,15 +7,17 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"sync"
 
 	"github.com/NatoBoram/ipapm/apt"
 	"github.com/NatoBoram/ipapm/config"
 	"github.com/NatoBoram/ipapm/env"
 	"github.com/NatoBoram/ipapm/kubo"
 	slogctx "github.com/veqryn/slog-context"
+	"golang.org/x/sync/errgroup"
 )
 
-func sync(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Client) error {
+func syncConfig(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Client) error {
 	config, err := config.Load(config.Env{CONFIG_DIR: env.CONFIG_DIR, Name: env.Name})
 	if err != nil {
 		return fmt.Errorf("couldn't load config: %w", err)
@@ -27,95 +29,119 @@ func sync(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Clien
 		return fmt.Errorf("couldn't map sources: %w", err)
 	}
 
-	for _, source := range mapped {
-		err := syncSuites(ctx, env, kubo, client, source)
-		if err != nil {
-			slog.ErrorContext(ctx, "Error while syncing suites", slog.Any("error", err))
-			continue
-		}
+	jobs := make(chan apt.Config, len(mapped))
+	wg := new(sync.WaitGroup)
 
-		// Publish to IPNS
-		stat, err := kubo.RepoRoot(ctx, source.URI)
-		if err != nil {
-			slog.ErrorContext(
-				ctx, "Error while getting suite stat",
-				slog.Any("error", err),
-			)
-			continue
-		}
-
-		keyName := env.Name + ":" + path.Join(source.URI.Hostname(), source.URI.EscapedPath())
-		name, err := kubo.NamePublish(ctx, keyName, stat.Hash)
-		if err != nil {
-			slog.ErrorContext(
-				ctx, "Error while publishing to IPNS",
-				slog.Any("error", err),
-			)
-			continue
-		}
-		slog.InfoContext(
-			ctx, "Published to IPNS",
-			"cid", name.Cid().String(), "key", name.Peer().String(), "name", name.String(),
-		)
+	for range min(len(mapped), 4) {
+		wg.Go(func() {
+			for source := range jobs {
+				err := syncSource(ctx, env, kubo, client, source)
+				if err != nil {
+					slog.WarnContext(ctx, "Error while syncing source", slog.Any("error", err))
+				}
+			}
+		})
 	}
+
+	for _, source := range mapped {
+		jobs <- source
+	}
+	close(jobs)
+
+	wg.Wait()
+	return nil
+}
+
+func syncSource(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Client, config apt.Config) error {
+	err := syncSuites(ctx, kubo, client, config)
+	if err != nil {
+		return fmt.Errorf("error while syncing suites: %w", err)
+	}
+
+	// Publish to IPNS
+	stat, err := kubo.RepoRoot(ctx, config.URI)
+	if err != nil {
+		return fmt.Errorf("error while getting suite stat: %w", err)
+	}
+
+	keyName := env.Name + ":" + path.Join(config.URI.Hostname(), config.URI.EscapedPath())
+	name, err := kubo.NamePublish(ctx, keyName, stat.Hash)
+	if err != nil {
+		return fmt.Errorf("error while publishing to IPNS: %w", err)
+	}
+	slog.InfoContext(
+		ctx, "Published to IPNS",
+		"cid", name.Cid().String(), "key", name.Peer().String(), "name", name.String(),
+	)
 
 	return nil
 }
 
-func syncSuites(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Client, source apt.Config) error {
-	for suite := range source.Suites {
-		ctx := slogctx.Prepend(
-			ctx,
-			"uri", source.URI.String(),
-			"suite", suite,
+func syncSuites(ctx context.Context, kubo *kubo.Client, client *apt.Client, config apt.Config) error {
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(4)
+
+	for suite := range config.Suites {
+		g.Go(func() error { return syncSuite(ctx, kubo, client, config, suite) })
+	}
+
+	return g.Wait()
+}
+
+func syncSuite(ctx context.Context, kubo *kubo.Client, client *apt.Client, config apt.Config, suite string) error {
+	ctx = slogctx.Prepend(
+		ctx,
+		"uri", config.URI.String(),
+		"suite", suite,
+	)
+
+	// Get InRelease file
+	next, err := client.InRelease(ctx, config.URI, suite)
+	if err != nil {
+		return fmt.Errorf("error while fetching InRelease file: %w", err)
+	}
+	for _, err := range next.Warnings {
+		slog.WarnContext(
+			ctx, "Errors while parsing InRelease",
+			slog.Any("error", err),
 		)
+	}
+	slog.InfoContext(ctx, "Got InRelease file")
 
-		// Get InRelease file
-		next, err := client.InRelease(ctx, source.URI, suite)
+	// Verify signature
+	err = verifyPgp(config.SignedBy, string(next.Raw))
+	if err != nil {
+		return fmt.Errorf("failed to verify PGP signature: %w", err)
+	}
+	slog.InfoContext(ctx, "Verified PGP signature")
+
+	// Get InRelease from MFS
+	previous, err := kubo.InRelease(ctx, config.URI, suite)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("error while fetching InRelease from MFS: %w", err)
+	}
+
+	// Sync
+	if errors.Is(err, os.ErrNotExist) {
+		slog.InfoContext(ctx, "No previous InRelease file in MFS")
+
+		err = syncAll(ctx, kubo, client, config, suite, next)
 		if err != nil {
-			return fmt.Errorf("error while fetching InRelease file: %w", err)
+			return fmt.Errorf("error while syncing all files: %w", err)
 		}
-		for _, err := range next.Warnings {
-			slog.WarnContext(
-				ctx, "Errors while parsing InRelease",
-				slog.Any("error", err),
-			)
-		}
-		slog.InfoContext(ctx, "Got InRelease file")
+	} else {
+		slog.InfoContext(ctx, "Got previous InRelease file from MFS")
 
-		// Verify signature
-		err = verifyPgp(source.SignedBy, string(next.Raw))
+		err = syncDiff(ctx, kubo, client, config, suite, next, previous)
 		if err != nil {
-			return fmt.Errorf("failed to verify PGP signature: %w", err)
+			return fmt.Errorf("error while syncing diff: %w", err)
 		}
-		slog.InfoContext(ctx, "Verified PGP signature")
+	}
 
-		// Get InRelease from MFS
-		previous, err := kubo.InRelease(ctx, source.URI, suite)
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("error while fetching InRelease from MFS: %w", err)
-		}
-
-		// Sync
-		if errors.Is(err, os.ErrNotExist) {
-			slog.InfoContext(ctx, "No previous InRelease file in MFS")
-
-			err = syncAll(ctx, kubo, client, source, suite, next)
-			if err != nil {
-				return fmt.Errorf("error while syncing all files: %w", err)
-			}
-
-			continue
-		} else {
-			slog.InfoContext(ctx, "Got previous InRelease file from MFS")
-
-			err = syncDiff(ctx, kubo, client, source, suite, next, previous)
-			if err != nil {
-				return fmt.Errorf("error while syncing diff: %w", err)
-			}
-
-			continue
-		}
+	slog.InfoContext(ctx, "Committing InRelease file")
+	err = kubo.WriteInRelease(ctx, config.URI, suite, next)
+	if err != nil {
+		return fmt.Errorf("error while writing InRelease to MFS: %w", err)
 	}
 
 	return nil
@@ -145,7 +171,7 @@ func upsertSources(
 
 			slog.InfoContext(ctx, "Streaming source...")
 
-			r, err := client.Stream(ctx, source.URI, f)
+			r, err := client.StreamSource(ctx, source.URI, f)
 			if err != nil {
 				return fmt.Errorf("error while fetching source %s: %w", f.Filename, err)
 			}
@@ -174,7 +200,7 @@ func upsertPackages(
 
 		slog.InfoContext(ctx, "Streaming package...")
 
-		r, err := client.Stream(ctx, source.URI, p.FileHash())
+		r, err := client.StreamPackage(ctx, source.URI, p.FileHash())
 		if err != nil {
 			return fmt.Errorf("error while fetching package %s: %w", p.Filename, err)
 		}

@@ -9,9 +9,22 @@ import (
 	"net/url"
 )
 
-func (c *Client) Stream(ctx context.Context, uri *url.URL, file FileHash) (io.ReadCloser, error) {
-	target := uri.JoinPath(file.Filename)
+func (c *Client) StreamFile(ctx context.Context, uri *url.URL, suite string, file FileHash) (io.ReadCloser, error) {
+	target := uri.JoinPath("dists", suite, file.Filename)
+	return c.stream(ctx, file, target)
+}
 
+func (c *Client) StreamSource(ctx context.Context, uri *url.URL, file FileHash) (io.ReadCloser, error) {
+	target := uri.JoinPath(file.Filename)
+	return c.stream(ctx, file, target)
+}
+
+func (c *Client) StreamPackage(ctx context.Context, uri *url.URL, file FileHash) (io.ReadCloser, error) {
+	target := uri.JoinPath(file.Filename)
+	return c.stream(ctx, file, target)
+}
+
+func (c *Client) stream(ctx context.Context, file FileHash, target *url.URL) (io.ReadCloser, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build request for %s: %w", target, err)

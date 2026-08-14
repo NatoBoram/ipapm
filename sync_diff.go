@@ -10,6 +10,7 @@ import (
 
 	"github.com/NatoBoram/ipapm/apt"
 	"github.com/NatoBoram/ipapm/kubo"
+	"github.com/NatoBoram/ipapm/wheel"
 	slogctx "github.com/veqryn/slog-context"
 )
 
@@ -67,10 +68,42 @@ func syncDiff(
 		}
 	}
 
-	slog.InfoContext(ctx, "Committing InRelease file")
-	err = kubo.WriteInRelease(ctx, config.URI, suite, next)
-	if err != nil {
-		return fmt.Errorf("error while writing InRelease to MFS: %w", err)
+	diff := pfiles.Diff(nfiles)
+
+	// Upsert files
+	upsert := wheel.MergeMaps(diff.Added, diff.Changed)
+	for _, f := range upsert {
+		ctx := slogctx.Prepend(
+			ctx,
+			"file", f.Filename,
+		)
+
+		slog.InfoContext(ctx, "Committing file")
+
+		r, err := client.StreamFile(ctx, config.URI, suite, f)
+		if err != nil {
+			return fmt.Errorf("error while fetching file %s: %w", f.Filename, err)
+		}
+
+		err = kubo.WriteFile(ctx, config.URI, suite, f, r)
+		r.Close()
+		if err != nil {
+			return fmt.Errorf("error while writing %s to MFS: %w", f.Filename, err)
+		}
+	}
+
+	// Remove files
+	for _, f := range diff.Removed {
+		ctx := slogctx.Prepend(
+			ctx,
+			"file", f.Filename,
+		)
+
+		slog.InfoContext(ctx, "Removing file from MFS")
+		err = kubo.RemoveFile(ctx, config.URI, suite, f)
+		if err != nil {
+			return fmt.Errorf("error while removing %s from MFS: %w", f.Filename, err)
+		}
 	}
 
 	return nil
