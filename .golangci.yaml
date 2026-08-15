@@ -10,6 +10,10 @@ linters:
       exclude-functions:
         - (*compress/gzip.Reader).Close
         - (*github.com/ipfs/kubo/client/rpc.Response).Close
+        - (*github.com/NatoBoram/ipapm/progress.Pool).Stop
         - (*os.File).Close
         - (io.Closer).Close
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
         - os.Setenv

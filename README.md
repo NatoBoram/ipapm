@@ -4,54 +4,26 @@
 
 Mirrors APT repositories to IPFS.
 
-## Roadmap
+## Usage
 
-> [!CAUTION]
-> This is a work in progress.
+This program downloads packages from APT repositories, mirrors them to IPFS using Kubo's Mutable FileSystem and then publishes them to IPNS. It will check for changes between previous and next versions and only download added and updated files.
 
-- [x] Get Kubo config
-  - [x] Connect to Kubo (`github.com/ipfs/kubo/client/rpc`)
-- [x] Get APT sources and config
-  - [x] Merge sources per URIs
-  - [x] Download InRelease files
-  - [x] Verify GPG keys (`github.com/ProtonMail/go-crypto/openpgp`)
-  - [x] Get `InRelease` from MFS (<https://docs.ipfs.tech/reference/kubo/rpc/#api-v0-files-read>)
-    - [x] Search differences
-    - [x] Get `Packages` files
-      - [x] Sync all if no previous
-      - [x] Search differences
-      - [x] Stream added/changed files to MFS while verifying hashes
-      - [x] Delete outdated files from MFS
-      - [x] Commit `Packages` files to MFS
-    - [x] Get `Sources` files
-      - [x] Sync all if no previous
-      - [x] Search differences
-      - [x] Stream added/changed files to MFS while verifying hashes
-      - [x] Delete outdated files from MFS
-      - [x] Commit `Sources` files to MFS
-    - [x] Handle `Contents` files
-    - [x] Commit `InRelease` file to MFS
-  - [x] Publish to IPNS
-- [x] Parallelize downloads by URI
-- [ ] Progress bar for downloading files (`github.com/cheggaaa/pb/v3`, `cmdenv.ProgressBarFullTemplate`)
+To crawl APT repositories, it uses `InRelease` files and verifies their PGP signature. It also verifies the hash of any file downloaded from that `InRelease` file and from `Packages` & `Sources` files. An unsigned or incorrect repository cannot be mirrored.
 
-## Docker
+## Installation
 
-The default config file is at `/home/nonroot/.config/ipapm/config.yaml`.
+Environment variables set private values while the config file sets public values.
 
-```yaml
-Kubo:
-	MFS: /ipapm
-Port: 9090
-Sources: []
-```
+### Environment variables
 
-Environment variables are loaded in the following order:
+They are loaded in the following order:
 
 - `.env.${GO_ENV}.local`
 - `.env.${GO_ENV}`
 - `.env.local`
 - `.env`
+
+`GO_ENV` cannot be set from an `.env` file and must be set in the environment. It defaults to `development`.
 
 These are the default values:
 
@@ -60,6 +32,48 @@ CONFIG_DIR=~/.config/ipapm
 KUBO_API_AUTH=
 KUBO_API_URL=http://localhost:5001
 ```
+
+`KUBO_API_AUTH` corresponds to `API.Authorizations.api.AuthSecret` in Kubo's config file. See [API.Authorizations: AuthSecret](https://github.com/ipfs/kubo/blob/master/docs/config.md#apiauthorizations-authsecret).
+
+#### Examples
+
+```env
+KUBO_API_AUTH='bearer:RGypK3ftgjie4aglyFh034j1e1dDnlJLpp2PiQAxuZ2JuITKKfGM7F6/2428WFtp+8AqMQArl3Sirpus26gauN1G'
+KUBO_API_AUTH='basic:user:RGypK3ftgjie4aglyFh034j1e1dDnlJLpp2PiQAxuZ2JuITKKfGM7F6/2428WFtp+8AqMQArl3Sirpus26gauN1G'
+KUBO_API_AUTH='basic:dXNlcjpSR3lwSzNmdGdqaWU0YWdseUZoMDM0ajFlMWREbmxKTHBwMlBpUUF4dVoySnVJVEtLZkdNN0Y2LzI0MjhXRnRwKzhBcU1RQXJsM1NpcnB1czI2Z2F1TjFH'
+```
+
+### Config
+
+The config is, by default, at `~/.config/ipapm/config.yaml`. Its parent folder can be set with `CONFIG_DIR`.
+
+Here's the default values:
+
+```yaml
+Kubo:
+  MFS: /ipapm
+Port: 9090
+Sources: []
+```
+
+Here's a full example:
+
+```yaml
+Kubo:
+  MFS: /ipapm
+Sources:
+  - URIs:
+      - https://packages.termux.dev/apt/termux-main
+    Suites:
+      - stable
+      - staging
+    Signed-By: /usr/share/keyrings/termux-autobuilds.gpg
+Port: 9090
+```
+
+## Docker
+
+The default config file is at `/home/nonroot/.config/ipapm/config.yaml`. Don't forget to mount `.gpg` signatures.
 
 ## License
 
