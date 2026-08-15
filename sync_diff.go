@@ -10,6 +10,7 @@ import (
 
 	"github.com/NatoBoram/ipapm/apt"
 	"github.com/NatoBoram/ipapm/kubo"
+	"github.com/NatoBoram/ipapm/progress"
 	"github.com/NatoBoram/ipapm/wheel"
 	slogctx "github.com/veqryn/slog-context"
 )
@@ -17,6 +18,7 @@ import (
 func syncDiff(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
 	config apt.Config, suite string, next, previous apt.InRelease,
+	bar *progress.Bar,
 ) error {
 	nfiles, err := next.FileHashes()
 	if err != nil {
@@ -41,12 +43,12 @@ func syncDiff(
 		)
 
 		if component.Architecture == "source" {
-			err := syncDiffSources(ctx, kubo, client, config, suite, component)
+			err := syncDiffSources(ctx, kubo, client, config, suite, component, bar)
 			if err != nil {
 				return fmt.Errorf("error while syncing sources: %w", err)
 			}
 		} else {
-			err := syncDiffPackages(ctx, kubo, client, config, suite, component)
+			err := syncDiffPackages(ctx, kubo, client, config, suite, component, bar)
 			if err != nil {
 				return fmt.Errorf("error while syncing packages: %w", err)
 			}
@@ -69,6 +71,7 @@ func syncDiff(
 	}
 
 	diff := pfiles.Diff(nfiles)
+	bar.AddTotal(len(diff.Added) + len(diff.Changed) + len(diff.Removed))
 
 	// Upsert files
 	upsert := wheel.MergeMaps(diff.Added, diff.Changed)
@@ -90,6 +93,8 @@ func syncDiff(
 		if err != nil {
 			return fmt.Errorf("error while writing %s to MFS: %w", f.Filename, err)
 		}
+
+		bar.Increment()
 	}
 
 	// Remove files
@@ -104,6 +109,8 @@ func syncDiff(
 		if err != nil {
 			return fmt.Errorf("error while removing %s from MFS: %w", f.Filename, err)
 		}
+
+		bar.Increment()
 	}
 
 	return nil
@@ -112,6 +119,7 @@ func syncDiff(
 func syncDiffSources(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
 	config apt.Config, suite string, component apt.Component,
+	bar *progress.Bar,
 ) error {
 	sources, err := client.Sources(ctx, config.URI, suite, component)
 	if err != nil {
@@ -141,7 +149,7 @@ func syncDiffSources(
 
 	// Upsert sources
 	upsert := slices.Concat(diff.Added, diff.Changed)
-	err = upsertSources(ctx, kubo, client, config, upsert)
+	err = upsertSources(ctx, kubo, client, config, upsert, bar)
 	if err != nil {
 		return fmt.Errorf("error while upserting sources: %w", err)
 	}
@@ -199,6 +207,7 @@ func syncDiffSources(
 func syncDiffPackages(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
 	config apt.Config, suite string, component apt.Component,
+	bar *progress.Bar,
 ) error {
 	slog.InfoContext(ctx, "Getting Packages files")
 	npackages, err := client.Packages(ctx, config.URI, suite, component)
@@ -232,7 +241,7 @@ func syncDiffPackages(
 
 	// Upsert packages
 	upsert := slices.Concat(diff.Added, diff.Changed)
-	err = upsertPackages(ctx, kubo, client, config, upsert)
+	err = upsertPackages(ctx, kubo, client, config, upsert, bar)
 	if err != nil {
 		return fmt.Errorf("error while upserting packages: %w", err)
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/NatoBoram/ipapm/env"
 	"github.com/NatoBoram/ipapm/nord"
+	"github.com/NatoBoram/ipapm/progress"
 	"github.com/jwalton/gchalk"
 	"github.com/jwalton/go-supportscolor"
 	"github.com/lmittmann/tint"
@@ -14,7 +15,8 @@ import (
 )
 
 type Config struct {
-	GO_ENV env.Environment
+	GO_ENV   env.Environment
+	Progress *progress.Pool
 }
 
 func handler(c Config) slog.Handler {
@@ -24,8 +26,7 @@ func handler(c Config) slog.Handler {
 		}))
 	}
 
-	w := os.Stderr
-	return tint.NewTextHandler(w, new(tint.Options{
+	return tint.NewTextHandler(c.Progress, new(tint.Options{
 		AddSource:   false,
 		Level:       slog.LevelDebug,
 		NoColor:     !supportscolor.Stderr().SupportsColor,

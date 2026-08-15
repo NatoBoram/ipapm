@@ -7,12 +7,14 @@ import (
 
 	"github.com/NatoBoram/ipapm/apt"
 	"github.com/NatoBoram/ipapm/kubo"
+	"github.com/NatoBoram/ipapm/progress"
 	slogctx "github.com/veqryn/slog-context"
 )
 
 func syncAll(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
 	config apt.Config, suite string, next apt.InRelease,
+	bar *progress.Bar,
 ) error {
 	slog.InfoContext(ctx, "Syncing all files")
 
@@ -30,23 +32,25 @@ func syncAll(
 		)
 
 		if component.Architecture == "source" {
-			err := syncAllSources(ctx, kubo, client, config, suite, component)
+			err := syncAllSources(ctx, kubo, client, config, suite, component, bar)
 			if err != nil {
 				return fmt.Errorf("error while syncing sources: %w", err)
 			}
 		} else {
-			err := syncAllPackages(ctx, kubo, client, config, suite, component)
+			err := syncAllPackages(ctx, kubo, client, config, suite, component, bar)
 			if err != nil {
 				return fmt.Errorf("error while syncing packages: %w", err)
 			}
 		}
 	}
 
+	bar.AddTotal(len(files))
 	for _, file := range files {
 		ctx := slogctx.Prepend(
 			ctx,
 			"file", file.Filename,
 		)
+
 		slog.InfoContext(ctx, "Committing file")
 
 		r, err := client.StreamFile(ctx, config.URI, suite, file)
@@ -59,6 +63,8 @@ func syncAll(
 		if err != nil {
 			return fmt.Errorf("error while writing %s to MFS: %w", file.Filename, err)
 		}
+
+		bar.Increment()
 	}
 
 	return nil
@@ -66,8 +72,8 @@ func syncAll(
 
 func syncAllSources(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
-	config apt.Config, suite string,
-	component apt.Component,
+	config apt.Config, suite string, component apt.Component,
+	bar *progress.Bar,
 ) error {
 	slog.DebugContext(ctx, "Source")
 	sources, err := client.Sources(ctx, config.URI, suite, component)
@@ -81,7 +87,7 @@ func syncAllSources(
 		"files", len(sources.FileBytes),
 	)
 
-	err = upsertSources(ctx, kubo, client, config, sources.Sources)
+	err = upsertSources(ctx, kubo, client, config, sources.Sources, bar)
 	if err != nil {
 		return fmt.Errorf("error while upserting sources: %w", err)
 	}
@@ -107,8 +113,8 @@ func syncAllSources(
 
 func syncAllPackages(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
-	config apt.Config, suite string,
-	component apt.Component,
+	config apt.Config, suite string, component apt.Component,
+	bar *progress.Bar,
 ) error {
 	slog.InfoContext(ctx, "Getting Packages files")
 	packages, err := client.Packages(ctx, config.URI, suite, component)
@@ -128,7 +134,7 @@ func syncAllPackages(
 		"files", len(packages.FileBytes),
 	)
 
-	err = upsertPackages(ctx, kubo, client, config, packages.Packages)
+	err = upsertPackages(ctx, kubo, client, config, packages.Packages, bar)
 	if err != nil {
 		return fmt.Errorf("error while upserting packages: %w", err)
 	}

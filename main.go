@@ -19,9 +19,10 @@ import (
 	h "github.com/NatoBoram/ipapm/http"
 	"github.com/NatoBoram/ipapm/kubo"
 	"github.com/NatoBoram/ipapm/log"
+	"github.com/NatoBoram/ipapm/progress"
 )
 
-func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client) {
+func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client, pool *progress.Pool) {
 	// Wait for a very small amount of time for the initial start then reset using
 	// the full interval
 	timer := time.NewTimer(timeout)
@@ -32,7 +33,7 @@ func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client)
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			err := syncConfig(ctx, env, kubo, apt)
+			err := syncConfig(ctx, env, kubo, apt, pool)
 			if err != nil {
 				slog.WarnContext(ctx, "Error during sync", slog.Any("error", err))
 			}
@@ -42,7 +43,7 @@ func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client)
 	}
 }
 
-func run(ctx context.Context) error {
+func run(ctx context.Context, pool *progress.Pool) error {
 	env, err := env.LoadEnv()
 	if err != nil {
 		return fmt.Errorf("couldn't load environment variables: %w", err)
@@ -100,7 +101,7 @@ func run(ctx context.Context) error {
 		slog.String("url", fmt.Sprintf("http://localhost:%d", config.Port)),
 	)
 
-	go start(ctx, env, kubo, apt)
+	go start(ctx, env, kubo, apt, pool)
 
 	select {
 	case <-ctx.Done():
@@ -132,7 +133,11 @@ func run(ctx context.Context) error {
 
 func main() {
 	GO_ENV := env.GetEnvironment()
-	logger := log.New(log.Config{GO_ENV: GO_ENV})
+
+	pool := progress.NewPool(GO_ENV)
+	defer pool.Stop()
+
+	logger := log.New(log.Config{GO_ENV: GO_ENV, Progress: pool})
 	slog.SetDefault(logger)
 
 	ctx, cancel := signal.NotifyContext(
@@ -141,7 +146,7 @@ func main() {
 	)
 	defer cancel()
 
-	if err := run(ctx); err != nil {
+	if err := run(ctx, pool); err != nil {
 		slog.ErrorContext(ctx, "Couldn't run service", slog.Any("error", err))
 		os.Exit(1)
 	}
