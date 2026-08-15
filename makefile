@@ -26,4 +26,4 @@ docker-run:
 	docker run ipapm
 
 docker-kill:
-	docker ps --format '{{.Image}} {{.ID}}' | grep based.ts | awk '{print $2}' | xargs -r docker kill
+	docker ps --format '{{.Image}} {{.ID}}' | grep ipapm | awk '{print $2}' | xargs -r docker kill
