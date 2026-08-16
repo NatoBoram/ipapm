@@ -10,4 +10,5 @@ RUN CGO_ENABLED=0 go install -trimpath ./...
 FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /go/bin /usr/local/bin
 
+EXPOSE 9090
 ENTRYPOINT ["/usr/local/bin/ipapm"]

@@ -9,13 +9,9 @@ services:
     environment:
       GO_ENV: development
     healthcheck:
-      interval: 1m30s
-      retries: 5
-      start_period: 1s
       test:
         - CMD
         - /usr/local/bin/readyz
-      timeout: 30s
     network_mode: host
     volumes:
       - ./volumes/ipapm/:/home/nonroot/.config/ipapm/

@@ -18,22 +18,16 @@ Environment variables set private values while the config file sets public value
 
 ### Environment variables
 
-They are loaded in the following order:
-
-- `.env.${GO_ENV}.local`
-- `.env.${GO_ENV}`
-- `.env.local`
-- `.env`
-
-`GO_ENV` cannot be set from an `.env` file and must be set in the environment. It defaults to `development`.
-
 These are the default values:
 
 ```env
 CONFIG_DIR=~/.config/ipapm
+GO_ENV=development
 KUBO_API_AUTH=
 KUBO_API_URL=http://localhost:5001
 ```
+
+`GO_ENV` changes the logging style into JSON Lines when set to `production`.
 
 `KUBO_API_AUTH` corresponds to `API.Authorizations.api.AuthSecret` in Kubo's config file. See [API.Authorizations: AuthSecret](https://github.com/ipfs/kubo/blob/master/docs/config.md#apiauthorizations-authsecret).
 
@@ -78,7 +72,7 @@ Sources:
 Port: 9090
 ```
 
-## Docker
+### Docker
 
 The default config file is at `/home/nonroot/.config/ipapm/config.yaml`. Don't forget to mount `.gpg` signatures.
 
@@ -92,17 +86,34 @@ services:
     environment:
       GO_ENV: production
     healthcheck:
-      interval: 1m30s
-      retries: 5
-      start_period: 1s
       test:
+        - CMD
         - /usr/local/bin/readyz
-      timeout: 30s
     image: natoboram/ipapm
     volumes:
       - ~/.config/ipapm/:/home/nonroot/.config/ipapm/
       - /usr/share/keyrings/:/usr/share/keyrings/:ro
 ```
+
+## API
+
+Two endpoints are exposed on port `9090`:
+
+- `/livez`
+- `/readyz`
+
+They respond with `204 No Content` when everything is right. If Kubo cannot be contacted, then `/readyz` responds with `503 Service Unavailable`.
+
+## Development
+
+Environment variables are loaded in the following order:
+
+- `.env.${GO_ENV}.local`
+- `.env.${GO_ENV}`
+- `.env.local`
+- `.env`
+
+`GO_ENV` cannot be set from an `.env` file and must be set in the environment. It defaults to `development`.
 
 ## License
 
