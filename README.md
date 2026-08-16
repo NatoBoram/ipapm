@@ -4,6 +4,8 @@
 
 Mirrors APT repositories to IPFS.
 
+![Screenshot](https://github.com/user-attachments/assets/dd4d94bc-a2e4-4996-acc1-d1c4df6ec854)
+
 ## Usage
 
 This program downloads packages from APT repositories, mirrors them to IPFS using Kubo's Mutable FileSystem and then publishes them to IPNS. It will check for changes between previous and next versions and only download added and updated files.
