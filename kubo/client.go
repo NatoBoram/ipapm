@@ -4,14 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/blang/semver/v4"
 	ipfs "github.com/ipfs/kubo"
 	"github.com/ipfs/kubo/client/rpc"
 )
-
-const timeout time.Duration = time.Minute * 1
 
 type Client struct {
 	*rpc.HttpApi
@@ -20,9 +17,6 @@ type Client struct {
 }
 
 func (k *Client) Version(ctx context.Context) (*semver.Version, error) {
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(timeout))
-	defer cancel()
-
 	resp, err := k.Request("version").Send(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get version from Kubo: %w", err)

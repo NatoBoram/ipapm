@@ -11,9 +11,6 @@ import (
 )
 
 func (k *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (apt.InRelease, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
 	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), "dists", suite, "InRelease")
 	if !path.IsAbs(target) {
 		target = "/" + target

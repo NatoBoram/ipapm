@@ -74,7 +74,7 @@ func readBuildInfo() (string, string, error) {
 		return "", "", errors.New("failed to read build info")
 	}
 
-	parts := strings.Split(info.Path, "/")
+	parts := strings.Split(info.Main.Path, "/")
 	if len(parts) == 0 {
 		return "", "", errors.New("failed to parse build info")
 	}

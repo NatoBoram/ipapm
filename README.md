@@ -68,12 +68,39 @@ Sources:
       - stable
       - staging
     Signed-By: /usr/share/keyrings/termux-autobuilds.gpg
+  - URIs:
+      - https://packages.microsoft.com/repos/code
+    Suites:
+      - stable
+    Signed-By: /usr/share/keyrings/microsoft.gpg
 Port: 9090
 ```
 
 ## Docker
 
 The default config file is at `/home/nonroot/.config/ipapm/config.yaml`. Don't forget to mount `.gpg` signatures.
+
+```yaml
+services:
+  ipapm:
+    container_name: ipapm
+    env_file:
+      - path: .env
+      - path: .env.local
+    environment:
+      GO_ENV: production
+    healthcheck:
+      interval: 1m30s
+      retries: 5
+      start_period: 1s
+      test:
+        - /usr/local/bin/readyz
+      timeout: 30s
+    image: natoboram/ipapm
+    volumes:
+      - ~/.config/ipapm/:/home/nonroot/.config/ipapm/
+      - /usr/share/keyrings/:/usr/share/keyrings/:ro
+```
 
 ## License
 

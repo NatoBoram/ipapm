@@ -12,9 +12,6 @@ import (
 )
 
 func (k *Client) Packages(ctx context.Context, uri *url.URL, suite string, component apt.Component) (apt.PackagesBytes, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
 	downloads := make([]apt.FileByte, 0, len(component.Files))
 
 	for _, file := range component.Files {
@@ -73,9 +70,6 @@ func (k *Client) fileByte(ctx context.Context, target string, file apt.FileHash)
 }
 
 func (k *Client) Sources(ctx context.Context, uri *url.URL, suite string, component apt.Component) (apt.SourcesBytes, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
 	downloads := make([]apt.FileByte, 0, len(component.Files))
 
 	for _, file := range component.Files {
