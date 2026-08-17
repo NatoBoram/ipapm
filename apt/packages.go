@@ -57,7 +57,7 @@ func (c *Client) Packages(
 	for _, file := range component.Files {
 		downloaded, err := c.file(ctx, uri, suite, file)
 		if err != nil {
-			return PackagesBytes{}, fmt.Errorf("couldn't download Packages: %w", err)
+			return PackagesBytes{}, fmt.Errorf("downloading Packages: %w", err)
 		}
 
 		downloads = append(downloads, downloaded)
@@ -65,12 +65,12 @@ func (c *Client) Packages(
 
 	uncompressed, err := UncompressPackages(downloads)
 	if err != nil {
-		return PackagesBytes{}, fmt.Errorf("couldn't uncompress Packages: %w", err)
+		return PackagesBytes{}, fmt.Errorf("uncompressing Packages: %w", err)
 	}
 
 	parsed, err := ParsePackages(uncompressed)
 	if err != nil {
-		return PackagesBytes{}, fmt.Errorf("couldn't parse Packages: %w", err)
+		return PackagesBytes{}, fmt.Errorf("parsing Packages: %w", err)
 	}
 
 	return PackagesBytes{
@@ -96,13 +96,13 @@ func UncompressPackages(downloads []FileByte) (io.Reader, error) {
 			r := bytes.NewReader(download.Bytes)
 			u, err := gzip.NewReader(r)
 			if err != nil {
-				return nil, fmt.Errorf("failed to open gzip stream: %w", err)
+				return nil, fmt.Errorf("opening gzip stream: %w", err)
 			}
 			defer u.Close()
 
 			uncompressed, err := io.ReadAll(u)
 			if err != nil {
-				return nil, fmt.Errorf("failed to decompress gzip stream: %w", err)
+				return nil, fmt.Errorf("decompressing gzip stream: %w", err)
 			}
 
 			return bytes.NewReader(uncompressed), nil
@@ -112,7 +112,7 @@ func UncompressPackages(downloads []FileByte) (io.Reader, error) {
 
 			uncompressed, err := io.ReadAll(u)
 			if err != nil {
-				return nil, fmt.Errorf("failed to decompress bzip2 stream: %w", err)
+				return nil, fmt.Errorf("decompressing bzip2 stream: %w", err)
 			}
 
 			return bytes.NewReader(uncompressed), nil
@@ -201,7 +201,7 @@ func ParsePackages(r io.Reader) (Packages, error) {
 				current.Warnings = append(
 					current.Warnings,
 					fmt.Errorf(
-						"error parsing %s for %s %s: %w",
+						"parsing %s for %s %s: %w",
 						key, current.Package, current.Version, err,
 					),
 				)
@@ -219,7 +219,7 @@ func ParsePackages(r io.Reader) (Packages, error) {
 				current.Warnings = append(
 					current.Warnings,
 					fmt.Errorf(
-						"error parsing %s for %s %s: %w",
+						"parsing %s for %s %s: %w",
 						key, current.Package, current.Version, err,
 					),
 				)
@@ -251,7 +251,7 @@ func ParsePackages(r io.Reader) (Packages, error) {
 				current.Warnings = append(
 					current.Warnings,
 					fmt.Errorf(
-						"error parsing %s for %s %s: %w",
+						"parsing %s for %s %s: %w",
 						key, current.Package, current.Version, err,
 					),
 				)
@@ -264,7 +264,7 @@ func ParsePackages(r io.Reader) (Packages, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return Packages{}, fmt.Errorf("failed to scan Packages file: %w", err)
+		return Packages{}, fmt.Errorf("scanning Packages file: %w", err)
 	}
 
 	if current.Filename != "" {

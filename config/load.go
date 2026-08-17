@@ -33,7 +33,7 @@ type Env struct {
 func Load(env Env) (Config, error) {
 	dir, err := ConfigDir(env)
 	if err != nil {
-		return Config{}, fmt.Errorf("couldn't get config dir: %w", err)
+		return Config{}, fmt.Errorf("getting config dir: %w", err)
 	}
 
 	name := ConfigFile(dir)
@@ -42,13 +42,13 @@ func Load(env Env) (Config, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		err := create(env.Name, name)
 		if err != nil {
-			return Config{}, fmt.Errorf("couldn't create config: %w", err)
+			return Config{}, fmt.Errorf("creating config: %w", err)
 		}
 
-		return Config{}, fmt.Errorf("created new config at %s: %w", name, err)
+		return Config{}, fmt.Errorf("created new config at %q", name)
 	}
 	if err != nil {
-		return Config{}, fmt.Errorf("couldn't read config: %w", err)
+		return Config{}, fmt.Errorf("reading config: %w", err)
 	}
 
 	return config, nil
@@ -57,19 +57,19 @@ func Load(env Env) (Config, error) {
 func read(filename string) (Config, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return Config{}, fmt.Errorf("failed to open config file: %w", err)
+		return Config{}, fmt.Errorf("opening config file: %w", err)
 	}
 	defer file.Close()
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return Config{}, fmt.Errorf("failed to read config file: %w", err)
+		return Config{}, fmt.Errorf("reading config file: %w", err)
 	}
 
 	var c Config
 	err = yaml.Unmarshal(data, &c)
 	if err != nil {
-		return c, fmt.Errorf("failed to unmarshal config: %w", err)
+		return c, fmt.Errorf("unmarshalling config: %w", err)
 	}
 
 	return c, err
@@ -82,18 +82,18 @@ func create(name, filename string) error {
 		Sources: []Source{},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
+		return fmt.Errorf("marshalling config: %w", err)
 	}
 
 	file, err := os.Create(filename)
 	if err != nil {
-		return fmt.Errorf("failed to create config file: %w", err)
+		return fmt.Errorf("creating config file: %w", err)
 	}
 	defer file.Close()
 
 	_, err = file.Write(data)
 	if err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
+		return fmt.Errorf("writing config file: %w", err)
 	}
 
 	return err

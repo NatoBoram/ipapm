@@ -22,19 +22,19 @@ func (k *Client) Packages(ctx context.Context, uri *url.URL, suite string, compo
 
 		downloaded, err := k.fileByte(ctx, target, file)
 		if err != nil {
-			return apt.PackagesBytes{}, fmt.Errorf("couldn't read Packages: %w", err)
+			return apt.PackagesBytes{}, fmt.Errorf("reading Packages: %w", err)
 		}
 		downloads = append(downloads, downloaded)
 	}
 
 	uncompressed, err := apt.UncompressPackages(downloads)
 	if err != nil {
-		return apt.PackagesBytes{}, fmt.Errorf("couldn't uncompress Packages: %w", err)
+		return apt.PackagesBytes{}, fmt.Errorf("uncompressing Packages: %w", err)
 	}
 
 	parsed, err := apt.ParsePackages(uncompressed)
 	if err != nil {
-		return apt.PackagesBytes{}, fmt.Errorf("couldn't parse Packages: %w", err)
+		return apt.PackagesBytes{}, fmt.Errorf("parsing Packages: %w", err)
 	}
 
 	return apt.PackagesBytes{
@@ -46,7 +46,7 @@ func (k *Client) Packages(ctx context.Context, uri *url.URL, suite string, compo
 func (k *Client) fileByte(ctx context.Context, target string, file apt.FileHash) (apt.FileByte, error) {
 	resp, err := k.Request("files/read", target).Send(ctx)
 	if err != nil {
-		return apt.FileByte{}, fmt.Errorf("failed to request file from MFS: %w", err)
+		return apt.FileByte{}, fmt.Errorf("requesting file from MFS: %w", err)
 	}
 	defer resp.Close()
 	if resp.Error != nil {
@@ -54,12 +54,12 @@ func (k *Client) fileByte(ctx context.Context, target string, file apt.FileHash)
 			return apt.FileByte{}, fmt.Errorf("%s: %w", target, os.ErrNotExist)
 		}
 
-		return apt.FileByte{}, fmt.Errorf("kubo error (%d) \"%s\"", resp.Error.Code, resp.Error.Message)
+		return apt.FileByte{}, fmt.Errorf("kubo error (%d) %q", resp.Error.Code, resp.Error.Message)
 	}
 
 	bytes, err := io.ReadAll(resp.Output)
 	if err != nil {
-		return apt.FileByte{}, fmt.Errorf("failed to read response body for %s: %w", target, err)
+		return apt.FileByte{}, fmt.Errorf("reading response body for %q: %w", target, err)
 	}
 
 	downloaded := apt.FileByte{
@@ -80,19 +80,19 @@ func (k *Client) Sources(ctx context.Context, uri *url.URL, suite string, compon
 
 		downloaded, err := k.fileByte(ctx, target, file)
 		if err != nil {
-			return apt.SourcesBytes{}, fmt.Errorf("couldn't read Sources: %w", err)
+			return apt.SourcesBytes{}, fmt.Errorf("reading Sources: %w", err)
 		}
 		downloads = append(downloads, downloaded)
 	}
 
 	uncompressed, err := apt.UncompressSources(downloads)
 	if err != nil {
-		return apt.SourcesBytes{}, fmt.Errorf("couldn't uncompress Sources: %w", err)
+		return apt.SourcesBytes{}, fmt.Errorf("uncompressing Sources: %w", err)
 	}
 
 	parsed, err := apt.ParseSources(uncompressed)
 	if err != nil {
-		return apt.SourcesBytes{}, fmt.Errorf("couldn't parse Sources: %w", err)
+		return apt.SourcesBytes{}, fmt.Errorf("parsing Sources: %w", err)
 	}
 
 	return apt.SourcesBytes{

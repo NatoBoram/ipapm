@@ -18,7 +18,7 @@ func loadPgp(signedBy string) ([]byte, error) {
 
 	key, err := os.ReadFile(signedBy)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read key file %s: %w", signedBy, err)
+		return nil, fmt.Errorf("reading key file %q: %w", signedBy, err)
 	}
 
 	return key, nil
@@ -35,7 +35,7 @@ func readPgp(key []byte) (openpgp.EntityList, error) {
 		return keyring2, nil
 	}
 
-	return nil, fmt.Errorf("failed to read keyring: %v", errors.Join(err1, err2))
+	return nil, fmt.Errorf("reading keyring: %w", errors.Join(err1, err2))
 }
 
 func checkPgp(message string, keyring openpgp.EntityList) error {
@@ -49,7 +49,7 @@ func checkPgp(message string, keyring openpgp.EntityList) error {
 
 	_, err := openpgp.CheckDetachedSignature(keyring, signed, signature, nil)
 	if err != nil {
-		return fmt.Errorf("signature verification failed: %w", err)
+		return fmt.Errorf("verifying signature: %w", err)
 	}
 
 	return nil
@@ -58,17 +58,17 @@ func checkPgp(message string, keyring openpgp.EntityList) error {
 func verifyPgp(signedBy, message string) error {
 	key, err := loadPgp(signedBy)
 	if err != nil {
-		return fmt.Errorf("failed to load PGP key: %w", err)
+		return fmt.Errorf("loading PGP key: %w", err)
 	}
 
 	keyring, err := readPgp(key)
 	if err != nil {
-		return fmt.Errorf("failed to read PGP key: %w", err)
+		return fmt.Errorf("reading PGP key: %w", err)
 	}
 
 	err = checkPgp(message, keyring)
 	if err != nil {
-		return fmt.Errorf("failed to check PGP signature: %w", err)
+		return fmt.Errorf("checking PGP signature: %w", err)
 	}
 
 	return nil

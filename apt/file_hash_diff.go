@@ -45,12 +45,12 @@ func (p FileHashes) Diff(n FileHashes) FileHashesDiff {
 func (p InRelease) Diff(n InRelease) (FileHashesDiff, error) {
 	pfiles, err := p.FileHashes()
 	if err != nil {
-		return FileHashesDiff{}, fmt.Errorf("failed to get files from previous InRelease: %w", err)
+		return FileHashesDiff{}, fmt.Errorf("getting files from previous InRelease: %w", err)
 	}
 
 	nfiles, err := n.FileHashes()
 	if err != nil {
-		return FileHashesDiff{}, fmt.Errorf("failed to get files from next InRelease: %w", err)
+		return FileHashesDiff{}, fmt.Errorf("getting files from next InRelease: %w", err)
 	}
 
 	return pfiles.Diff(nfiles), nil

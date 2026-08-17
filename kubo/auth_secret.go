@@ -2,6 +2,7 @@ package kubo
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -28,14 +29,10 @@ func DecodeAuthSecret(secret string) (AuthSecret, error) {
 			return AuthSecret{Username: parts[0], Password: parts[1]}, nil
 		}
 
-		if len(parts) != 1 {
-			return AuthSecret{}, fmt.Errorf("error splitting basic secret")
-		}
-
-		// Decode base64 after, split in two `:` then return username and password
+		// Decode base64 `after`, split in two `:` then return username and password
 		decoded, err := base64.StdEncoding.DecodeString(parts[0])
 		if err != nil {
-			return AuthSecret{}, fmt.Errorf("couldn't decode basic secret")
+			return AuthSecret{}, fmt.Errorf("decoding basic secret: %w", err)
 		}
 
 		parts = strings.SplitN(string(decoded), ":", 2)
@@ -43,7 +40,7 @@ func DecodeAuthSecret(secret string) (AuthSecret, error) {
 			return AuthSecret{Username: parts[0], Password: parts[1]}, nil
 		}
 
-		return AuthSecret{}, fmt.Errorf("invalid basic secret")
+		return AuthSecret{}, errors.New("invalid basic secret")
 
 	}
 

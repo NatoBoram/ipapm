@@ -35,7 +35,7 @@ func (k *Client) RepoRoot(ctx context.Context, uri *url.URL) (FilesStat, error) 
 func (k *Client) filesStat(ctx context.Context, target string) (FilesStat, error) {
 	resp, err := k.Request("files/stat", target).Send(ctx)
 	if err != nil {
-		return FilesStat{}, fmt.Errorf("failed to request files/stat %s: %w", target, err)
+		return FilesStat{}, fmt.Errorf("requesting files/stat %q: %w", target, err)
 	}
 	defer resp.Close()
 
@@ -45,7 +45,7 @@ func (k *Client) filesStat(ctx context.Context, target string) (FilesStat, error
 
 	var out FilesStat
 	if err := json.NewDecoder(resp.Output).Decode(&out); err != nil {
-		return FilesStat{}, fmt.Errorf("failed to decode files/stat response: %w", err)
+		return FilesStat{}, fmt.Errorf("decoding files/stat response: %w", err)
 	}
 
 	return out, nil

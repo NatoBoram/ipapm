@@ -37,18 +37,18 @@ func LoadEnv() (Env, error) {
 
 	for _, file := range files {
 		if err := godotenv.Load(file); err != nil && !os.IsNotExist(err) {
-			return Env{}, fmt.Errorf("failed to load environment variables from %q: %w", file, err)
+			return Env{}, fmt.Errorf("loading environment variables from %q: %w", file, err)
 		}
 	}
 
 	name, version, err := readBuildInfo()
 	if err != nil {
-		return Env{}, fmt.Errorf("failed to extract build info: %w", err)
+		return Env{}, fmt.Errorf("extracting build info: %w", err)
 	}
 
 	CONFIG_DIR, err := envConfigDir(name)
 	if err != nil {
-		return Env{}, fmt.Errorf("failed to determine config dir: %w", err)
+		return Env{}, fmt.Errorf("determining config dir: %w", err)
 	}
 
 	KUBO_API_URL := os.Getenv("KUBO_API_URL")
@@ -97,7 +97,7 @@ func envConfigDir(name string) (string, error) {
 
 	dir, err := os.UserConfigDir()
 	if err != nil {
-		return "", fmt.Errorf("failed to get user config dir: %w", err)
+		return "", fmt.Errorf("getting user config dir: %w", err)
 	}
 
 	return path.Join(dir, name), nil

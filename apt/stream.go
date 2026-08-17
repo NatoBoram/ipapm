@@ -27,16 +27,16 @@ func (c *Client) StreamPackage(ctx context.Context, uri *url.URL, file FileHash)
 func (c *Client) stream(ctx context.Context, file FileHash, target *url.URL) (io.ReadCloser, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build request for %s: %w", target, err)
+		return nil, fmt.Errorf("building request for %q: %w", target, err)
 	}
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch %s: %w", target, err)
+		return nil, fmt.Errorf("fetching %q: %w", target, err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, fmt.Errorf("unexpected status code %d for %s", resp.StatusCode, target)
+		return nil, fmt.Errorf("unexpected status %s for %q", resp.Status, target)
 	}
 
 	return newHashReader(resp.Body, file), nil
@@ -60,11 +60,11 @@ func (r *hashReader) Read(p []byte) (int, error) {
 		r.read += uint(n)
 
 		if r.file.Size > 0 && r.read > r.file.Size {
-			return n, fmt.Errorf("size exceeded for %s: expected max %d bytes, got at least %d", r.file.Filename, r.file.Size, r.read)
+			return n, fmt.Errorf("size exceeded for %q: expected max %d bytes, got at least %d", r.file.Filename, r.file.Size, r.read)
 		}
 
 		if _, werr := r.hashers.writer.Write(p[:n]); werr != nil {
-			return n, fmt.Errorf("failed to write stream to hashers: %w", werr)
+			return n, fmt.Errorf("writing stream to hashers: %w", werr)
 		}
 	}
 
@@ -72,13 +72,13 @@ func (r *hashReader) Read(p []byte) (int, error) {
 		r.verified = true
 
 		if r.file.Size > 0 && r.read != r.file.Size {
-			return n, fmt.Errorf("size mismatch for %s: expected %d, got %d", r.file.Filename, r.file.Size, r.read)
+			return n, fmt.Errorf("size mismatch for %q: expected %d, got %d", r.file.Filename, r.file.Size, r.read)
 		}
 
 		for _, h := range r.hashers.hashers {
 			checksum := hex.EncodeToString(h.writer.Sum(nil))
 			if checksum != h.sum {
-				return n, fmt.Errorf("%s mismatch for %s: expected %s, got %s", h.kind, r.file.Filename, h.sum, checksum)
+				return n, fmt.Errorf("%s mismatch for %q: expected %s, got %s", h.kind, r.file.Filename, h.sum, checksum)
 			}
 		}
 	}

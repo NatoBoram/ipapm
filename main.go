@@ -46,7 +46,7 @@ func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client,
 func run(ctx context.Context, pool *progress.Pool) error {
 	env, err := env.LoadEnv()
 	if err != nil {
-		return fmt.Errorf("couldn't load environment variables: %w", err)
+		return fmt.Errorf("loading environment variables: %w", err)
 	}
 
 	slog.InfoContext(
@@ -55,12 +55,12 @@ func run(ctx context.Context, pool *progress.Pool) error {
 	)
 	config, err := config.Load(config.Env{CONFIG_DIR: env.CONFIG_DIR, Name: env.Name})
 	if err != nil {
-		return fmt.Errorf("couldn't load config: %w", err)
+		return fmt.Errorf("loading config: %w", err)
 	}
 
 	userAgent, err := h.UserAgent()
 	if err != nil {
-		return fmt.Errorf("couldn't get user agent: %w", err)
+		return fmt.Errorf("getting user agent: %w", err)
 	}
 	slog.DebugContext(ctx, "User-Agent", slog.String("User-Agent", userAgent))
 
@@ -78,14 +78,15 @@ func run(ctx context.Context, pool *progress.Pool) error {
 		client,
 	)
 	if err != nil {
-		return fmt.Errorf("couldn't create Kubo client: %w", err)
+		return fmt.Errorf("creating Kubo client: %w", err)
 	}
 
 	v, err := kubo.Version(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "Couldn't connect to Kubo", slog.Any("error", err))
+	} else {
+		slog.InfoContext(ctx, "Connected to Kubo", slog.String("version", v.String()))
 	}
-	slog.InfoContext(ctx, "Connected to Kubo", slog.String("version", v.String()))
 
 	apt := apt.New(client)
 
@@ -113,11 +114,11 @@ func run(ctx context.Context, pool *progress.Pool) error {
 		fmt.Println("")
 
 		if err := server.Shutdown(ctx); err != nil {
-			return fmt.Errorf("couldn't shutdown server: %w", err)
+			return fmt.Errorf("shutting down server: %w", err)
 		}
 
 		if err := <-served; err != nil && !errors.Is(err, http.ErrServerClosed) {
-			return fmt.Errorf("couldn't close the server: %w", err)
+			return fmt.Errorf("closing the server: %w", err)
 		}
 
 		return nil
@@ -127,7 +128,7 @@ func run(ctx context.Context, pool *progress.Pool) error {
 			return nil
 		}
 
-		return fmt.Errorf("server error: %w", err)
+		return fmt.Errorf("serving HTTP: %w", err)
 	}
 }
 

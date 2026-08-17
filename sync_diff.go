@@ -22,13 +22,13 @@ func syncDiff(
 ) error {
 	nfiles, err := next.FileHashes()
 	if err != nil {
-		return fmt.Errorf("couldn't get files from next InRelease: %w", err)
+		return fmt.Errorf("getting files from next InRelease: %w", err)
 	}
 	ncomponents := next.ByComponents(nfiles)
 
 	pfiles, err := previous.FileHashes()
 	if err != nil {
-		return fmt.Errorf("couldn't get files from previous InRelease: %w", err)
+		return fmt.Errorf("getting files from previous InRelease: %w", err)
 	}
 	pcomponents := previous.ByComponents(pfiles)
 
@@ -45,12 +45,12 @@ func syncDiff(
 		if component.Architecture == "source" {
 			err := syncDiffSources(ctx, kubo, client, config, suite, component, bar)
 			if err != nil {
-				return fmt.Errorf("error while syncing sources: %w", err)
+				return fmt.Errorf("syncing sources: %w", err)
 			}
 		} else {
 			err := syncDiffPackages(ctx, kubo, client, config, suite, component, bar)
 			if err != nil {
-				return fmt.Errorf("error while syncing packages: %w", err)
+				return fmt.Errorf("syncing packages: %w", err)
 			}
 		}
 	}
@@ -66,7 +66,7 @@ func syncDiff(
 		slog.InfoContext(ctx, "Removing component from MFS")
 		err = kubo.RemoveComponent(ctx, config.URI, suite, component)
 		if err != nil {
-			return fmt.Errorf("error while removing %s/%s from MFS: %w", component.Name, component.Architecture, err)
+			return fmt.Errorf("removing %s/%s from MFS: %w", component.Name, component.Architecture, err)
 		}
 	}
 
@@ -85,13 +85,13 @@ func syncDiff(
 
 		r, err := client.StreamFile(ctx, config.URI, suite, f)
 		if err != nil {
-			return fmt.Errorf("error while fetching file %s: %w", f.Filename, err)
+			return fmt.Errorf("fetching file %q: %w", f.Filename, err)
 		}
 
 		err = kubo.WriteFile(ctx, config.URI, suite, f, r)
 		r.Close()
 		if err != nil {
-			return fmt.Errorf("error while writing %s to MFS: %w", f.Filename, err)
+			return fmt.Errorf("writing %q to MFS: %w", f.Filename, err)
 		}
 
 		bar.Increment()
@@ -107,7 +107,7 @@ func syncDiff(
 		slog.InfoContext(ctx, "Removing file from MFS")
 		err = kubo.RemoveFile(ctx, config.URI, suite, f)
 		if err != nil {
-			return fmt.Errorf("error while removing %s from MFS: %w", f.Filename, err)
+			return fmt.Errorf("removing %q from MFS: %w", f.Filename, err)
 		}
 
 		bar.Increment()
@@ -123,7 +123,7 @@ func syncDiffSources(
 ) error {
 	sources, err := client.Sources(ctx, config.URI, suite, component)
 	if err != nil {
-		return fmt.Errorf("couldn't download Sources: %w", err)
+		return fmt.Errorf("downloading Sources: %w", err)
 	}
 
 	slog.InfoContext(
@@ -134,7 +134,7 @@ func syncDiffSources(
 
 	psources, err := kubo.Sources(ctx, config.URI, suite, component)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("error while fetching previous Sources: %w", err)
+		return fmt.Errorf("fetching previous Sources: %w", err)
 	}
 
 	slog.InfoContext(
@@ -144,14 +144,14 @@ func syncDiffSources(
 
 	diff, err := psources.Sources.Diff(sources.Sources)
 	if err != nil {
-		return fmt.Errorf("error while diffing sources: %w", err)
+		return fmt.Errorf("diffing sources: %w", err)
 	}
 
 	// Upsert sources
 	upsert := slices.Concat(diff.Added, diff.Changed)
 	err = upsertSources(ctx, kubo, client, config, upsert, bar)
 	if err != nil {
-		return fmt.Errorf("error while upserting sources: %w", err)
+		return fmt.Errorf("upserting sources: %w", err)
 	}
 
 	// Remove sources
@@ -165,7 +165,7 @@ func syncDiffSources(
 		slog.InfoContext(ctx, "Removing source from MFS")
 		err = kubo.RemoveSource(ctx, config.URI, suite, removed)
 		if err != nil {
-			return fmt.Errorf("error while removing %s from MFS: %w", removed.Package, err)
+			return fmt.Errorf("removing %q from MFS: %w", removed.Package, err)
 		}
 	}
 
@@ -183,7 +183,7 @@ func syncDiffSources(
 
 		err = kubo.WriteSources(ctx, config.URI, suite, f)
 		if err != nil {
-			return fmt.Errorf("error while writing %s to MFS: %w", f.Hashes.Filename, err)
+			return fmt.Errorf("writing %q to MFS: %w", f.Hashes.Filename, err)
 		}
 	}
 
@@ -197,7 +197,7 @@ func syncDiffSources(
 		slog.InfoContext(ctx, "Removing Sources file from MFS")
 		err = kubo.RemoveSources(ctx, config.URI, suite, f)
 		if err != nil {
-			return fmt.Errorf("error while removing %s from MFS: %w", f.Hashes.Filename, err)
+			return fmt.Errorf("removing %q from MFS: %w", f.Hashes.Filename, err)
 		}
 	}
 
@@ -212,7 +212,7 @@ func syncDiffPackages(
 	slog.InfoContext(ctx, "Getting Packages files")
 	npackages, err := client.Packages(ctx, config.URI, suite, component)
 	if err != nil {
-		return fmt.Errorf("error while fetching Packages: %w", err)
+		return fmt.Errorf("fetching Packages: %w", err)
 	}
 
 	for _, p := range npackages.Packages {
@@ -229,7 +229,7 @@ func syncDiffPackages(
 
 	ppackages, err := kubo.Packages(ctx, config.URI, suite, component)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("error while fetching previous Packages: %w", err)
+		return fmt.Errorf("fetching previous Packages: %w", err)
 	}
 
 	slog.InfoContext(
@@ -243,7 +243,7 @@ func syncDiffPackages(
 	upsert := slices.Concat(diff.Added, diff.Changed)
 	err = upsertPackages(ctx, kubo, client, config, upsert, bar)
 	if err != nil {
-		return fmt.Errorf("error while upserting packages: %w", err)
+		return fmt.Errorf("upserting packages: %w", err)
 	}
 
 	// Remove packages
@@ -257,7 +257,7 @@ func syncDiffPackages(
 		slog.InfoContext(ctx, "Removing package from MFS")
 		err = kubo.RemovePackage(ctx, config.URI, suite, removed)
 		if err != nil {
-			return fmt.Errorf("error while removing %s from MFS: %w", removed.Filename, err)
+			return fmt.Errorf("removing %q from MFS: %w", removed.Filename, err)
 		}
 	}
 
@@ -275,7 +275,7 @@ func syncDiffPackages(
 
 		err = kubo.WritePackages(ctx, config.URI, suite, f)
 		if err != nil {
-			return fmt.Errorf("error while writing %s to MFS: %w", f.Hashes.Filename, err)
+			return fmt.Errorf("writing %q to MFS: %w", f.Hashes.Filename, err)
 		}
 	}
 
@@ -289,7 +289,7 @@ func syncDiffPackages(
 		slog.InfoContext(ctx, "Removing Packages file from MFS")
 		err = kubo.RemovePackages(ctx, config.URI, suite, f)
 		if err != nil {
-			return fmt.Errorf("error while removing %s from MFS: %w", f.Hashes.Filename, err)
+			return fmt.Errorf("removing %q from MFS: %w", f.Hashes.Filename, err)
 		}
 	}
 

@@ -31,17 +31,20 @@ func (c *Client) file(
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
-		return FileByte{}, fmt.Errorf("failed to build request for %s: %w", target, err)
+		return FileByte{}, fmt.Errorf("building request for %q: %w", target, err)
 	}
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return FileByte{}, fmt.Errorf("failed to fetch %s: %w", target, err)
+		return FileByte{}, fmt.Errorf("requesting %q: %w", target, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return FileByte{}, fmt.Errorf("unexpected status code %d for %s", resp.StatusCode, target)
+		return FileByte{}, fmt.Errorf(
+			"unexpected status %s for %q",
+			resp.Status, target,
+		)
 	}
 
 	multiHasher := makeHashers(file)
@@ -49,18 +52,18 @@ func (c *Client) file(
 	buf := bytes.NewBuffer(make([]byte, 0, file.Size))
 	_, err = io.Copy(buf, io.TeeReader(resp.Body, multiHasher.writer))
 	if err != nil {
-		return FileByte{}, fmt.Errorf("failed to read response body for %s: %w", target, err)
+		return FileByte{}, fmt.Errorf("reading response body for %q: %w", target, err)
 	}
 	body := buf.Bytes()
 
 	if uint(len(body)) != file.Size {
-		return FileByte{}, fmt.Errorf("size mismatch for %s: expected %d, got %d", file.Filename, file.Size, len(body))
+		return FileByte{}, fmt.Errorf("size mismatch for %q: expected %d, got %d", file.Filename, file.Size, len(body))
 	}
 
 	for _, hasher := range multiHasher.hashers {
 		checksum := hex.EncodeToString(hasher.writer.Sum(nil))
 		if checksum != hasher.sum {
-			return FileByte{}, fmt.Errorf("%s mismatch for %s: expected %s, got %s", hasher.kind, file.Filename, hasher.sum, checksum)
+			return FileByte{}, fmt.Errorf("%s mismatch for %q: expected %q, got %q", hasher.kind, file.Filename, hasher.sum, checksum)
 		}
 	}
 
