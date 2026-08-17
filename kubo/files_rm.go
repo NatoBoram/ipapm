@@ -17,7 +17,7 @@ func (k *Client) RemovePackage(ctx context.Context, uri *url.URL, suite string, 
 func (k *Client) RemoveSource(ctx context.Context, uri *url.URL, suite string, file apt.Source) error {
 	files, err := file.FileHashes()
 	if err != nil {
-		return fmt.Errorf("getting file hashes for source %s: %w", file.Directory, err)
+		return fmt.Errorf("getting file hashes for source %q: %w", file.Directory, err)
 	}
 
 	for _, f := range files {

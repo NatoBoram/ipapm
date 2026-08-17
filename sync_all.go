@@ -104,7 +104,7 @@ func syncAllSources(
 
 		err = kubo.WriteSources(ctx, config.URI, suite, f)
 		if err != nil {
-			return fmt.Errorf("writing %s to MFS: %w", f.Hashes.Filename, err)
+			return fmt.Errorf("writing %q to MFS: %w", f.Hashes.Filename, err)
 		}
 	}
 
@@ -151,7 +151,7 @@ func syncAllPackages(
 
 		err = kubo.WritePackages(ctx, config.URI, suite, f)
 		if err != nil {
-			return fmt.Errorf("writing %s to MFS: %w", f.Hashes.Filename, err)
+			return fmt.Errorf("writing %q to MFS: %w", f.Hashes.Filename, err)
 		}
 	}
 
