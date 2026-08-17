@@ -84,8 +84,9 @@ func run(ctx context.Context, pool *progress.Pool) error {
 	v, err := kubo.Version(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "Couldn't connect to Kubo", slog.Any("error", err))
+	} else {
+		slog.InfoContext(ctx, "Connected to Kubo", slog.String("version", v.String()))
 	}
-	slog.InfoContext(ctx, "Connected to Kubo", slog.String("version", v.String()))
 
 	apt := apt.New(client)
 
