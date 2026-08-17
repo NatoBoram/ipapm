@@ -14,6 +14,12 @@ To crawl APT repositories, it uses `InRelease` files and verifies their PGP sign
 
 ## Installation
 
+Binaries are available in [Releases](https://github.com/NatoBoram/ipapm/releases) or it can be installed from source.
+
+```sh
+go install github.com/NatoBoram/ipapm@latest
+```
+
 Environment variables set private values while the config file sets public values.
 
 ### Environment variables
