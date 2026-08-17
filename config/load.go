@@ -45,7 +45,7 @@ func Load(env Env) (Config, error) {
 			return Config{}, fmt.Errorf("creating config: %w", err)
 		}
 
-		return Config{}, fmt.Errorf("creating config at %q: %w", name, err)
+		return Config{}, fmt.Errorf("created new config at %q: %w", name, err)
 	}
 	if err != nil {
 		return Config{}, fmt.Errorf("reading config: %w", err)
