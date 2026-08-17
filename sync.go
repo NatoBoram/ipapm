@@ -21,13 +21,13 @@ import (
 func syncConfig(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt.Client, pool *progress.Pool) error {
 	config, err := config.Load(config.Env{CONFIG_DIR: env.CONFIG_DIR, Name: env.Name})
 	if err != nil {
-		return fmt.Errorf("couldn't load config: %w", err)
+		return fmt.Errorf("loading config: %w", err)
 	}
 	kubo.MFS = config.Kubo.MFS
 
 	mapped, err := apt.MapConfigs(config.Sources)
 	if err != nil {
-		return fmt.Errorf("couldn't map sources: %w", err)
+		return fmt.Errorf("mapping sources: %w", err)
 	}
 
 	jobs := make(chan apt.Config, len(mapped))
@@ -63,19 +63,19 @@ func syncSource(
 ) error {
 	err := syncSuites(ctx, kubo, client, config, bar)
 	if err != nil {
-		return fmt.Errorf("error while syncing suites: %w", err)
+		return fmt.Errorf("syncing suites: %w", err)
 	}
 
 	// Publish to IPNS
 	stat, err := kubo.RepoRoot(ctx, config.URI)
 	if err != nil {
-		return fmt.Errorf("error while getting suite stat: %w", err)
+		return fmt.Errorf("getting suite stat: %w", err)
 	}
 
 	keyName := env.Name + ":" + path.Join(config.URI.Hostname(), config.URI.EscapedPath())
 	name, err := kubo.NamePublish(ctx, keyName, stat.Hash)
 	if err != nil {
-		return fmt.Errorf("error while publishing to IPNS: %w", err)
+		return fmt.Errorf("publishing to IPNS: %w", err)
 	}
 	slog.InfoContext(
 		ctx, "Published to IPNS",
@@ -114,7 +114,7 @@ func syncSuite(
 	// Get InRelease file
 	next, err := client.InRelease(ctx, config.URI, suite)
 	if err != nil {
-		return fmt.Errorf("error while fetching InRelease file: %w", err)
+		return fmt.Errorf("fetching InRelease file: %w", err)
 	}
 	for _, err := range next.Warnings {
 		slog.WarnContext(
@@ -127,14 +127,14 @@ func syncSuite(
 	// Verify signature
 	err = verifyPgp(config.SignedBy, string(next.Raw))
 	if err != nil {
-		return fmt.Errorf("failed to verify PGP signature: %w", err)
+		return fmt.Errorf("verifying PGP signature: %w", err)
 	}
 	slog.InfoContext(ctx, "Verified PGP signature")
 
 	// Get InRelease from MFS
 	previous, err := kubo.InRelease(ctx, config.URI, suite)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("error while fetching InRelease from MFS: %w", err)
+		return fmt.Errorf("fetching InRelease from MFS: %w", err)
 	}
 
 	// Sync
@@ -143,21 +143,21 @@ func syncSuite(
 
 		err = syncAll(ctx, kubo, client, config, suite, next, bar)
 		if err != nil {
-			return fmt.Errorf("error while syncing all files: %w", err)
+			return fmt.Errorf("syncing all files: %w", err)
 		}
 	} else {
 		slog.InfoContext(ctx, "Got previous InRelease file from MFS")
 
 		err = syncDiff(ctx, kubo, client, config, suite, next, previous, bar)
 		if err != nil {
-			return fmt.Errorf("error while syncing diff: %w", err)
+			return fmt.Errorf("syncing diff: %w", err)
 		}
 	}
 
 	slog.InfoContext(ctx, "Committing InRelease file")
 	err = kubo.WriteInRelease(ctx, config.URI, suite, next)
 	if err != nil {
-		return fmt.Errorf("error while writing InRelease to MFS: %w", err)
+		return fmt.Errorf("writing InRelease to MFS: %w", err)
 	}
 
 	return nil
@@ -177,7 +177,7 @@ func upsertSources(
 
 		files, err := s.FileHashes()
 		if err != nil {
-			return fmt.Errorf("couldn't get files from Source: %w", err)
+			return fmt.Errorf("getting files from source: %w", err)
 		}
 
 		bar.AddTotal(len(files))
@@ -191,13 +191,13 @@ func upsertSources(
 
 			r, err := client.StreamSource(ctx, source.URI, f)
 			if err != nil {
-				return fmt.Errorf("error while fetching source %s: %w", f.Filename, err)
+				return fmt.Errorf("fetching source %q: %w", f.Filename, err)
 			}
 
 			err = kubo.WriteSource(ctx, source.URI, f, r)
 			r.Close()
 			if err != nil {
-				return fmt.Errorf("error while writing %s to MFS: %w", f.Filename, err)
+				return fmt.Errorf("writing %q to MFS: %w", f.Filename, err)
 			}
 
 			bar.Increment()
@@ -225,13 +225,13 @@ func upsertPackages(
 
 		r, err := client.StreamPackage(ctx, source.URI, p.FileHash())
 		if err != nil {
-			return fmt.Errorf("error while fetching package %s: %w", p.Filename, err)
+			return fmt.Errorf("fetching package %q: %w", p.Filename, err)
 		}
 
 		err = kubo.WritePackage(ctx, source.URI, p.FileHash(), r)
 		r.Close()
 		if err != nil {
-			return fmt.Errorf("error while writing %s to MFS: %w", p.Filename, err)
+			return fmt.Errorf("writing %q to MFS: %w", p.Filename, err)
 		}
 
 		bar.Increment()

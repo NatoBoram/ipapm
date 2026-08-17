@@ -20,7 +20,7 @@ func syncAll(
 
 	files, err := next.FileHashes()
 	if err != nil {
-		return fmt.Errorf("couldn't get files from InRelease: %w", err)
+		return fmt.Errorf("getting files from InRelease: %w", err)
 	}
 
 	components := next.ByComponents(files)
@@ -34,12 +34,12 @@ func syncAll(
 		if component.Architecture == "source" {
 			err := syncAllSources(ctx, kubo, client, config, suite, component, bar)
 			if err != nil {
-				return fmt.Errorf("error while syncing sources: %w", err)
+				return fmt.Errorf("syncing sources: %w", err)
 			}
 		} else {
 			err := syncAllPackages(ctx, kubo, client, config, suite, component, bar)
 			if err != nil {
-				return fmt.Errorf("error while syncing packages: %w", err)
+				return fmt.Errorf("syncing packages: %w", err)
 			}
 		}
 	}
@@ -55,13 +55,13 @@ func syncAll(
 
 		r, err := client.StreamFile(ctx, config.URI, suite, file)
 		if err != nil {
-			return fmt.Errorf("error while fetching file %s: %w", file.Filename, err)
+			return fmt.Errorf("fetching file %s: %w", file.Filename, err)
 		}
 
 		err = kubo.WriteFile(ctx, config.URI, suite, file, r)
 		r.Close()
 		if err != nil {
-			return fmt.Errorf("error while writing %s to MFS: %w", file.Filename, err)
+			return fmt.Errorf("writing %s to MFS: %w", file.Filename, err)
 		}
 
 		bar.Increment()
@@ -78,7 +78,7 @@ func syncAllSources(
 	slog.DebugContext(ctx, "Source")
 	sources, err := client.Sources(ctx, config.URI, suite, component)
 	if err != nil {
-		return fmt.Errorf("couldn't download Sources file: %w", err)
+		return fmt.Errorf("downloading Sources file: %w", err)
 	}
 
 	slog.InfoContext(
@@ -89,7 +89,7 @@ func syncAllSources(
 
 	err = upsertSources(ctx, kubo, client, config, sources.Sources, bar)
 	if err != nil {
-		return fmt.Errorf("error while upserting sources: %w", err)
+		return fmt.Errorf("upserting sources: %w", err)
 	}
 
 	// Commit sources. Since there's no previous Sources file, we commit
@@ -104,7 +104,7 @@ func syncAllSources(
 
 		err = kubo.WriteSources(ctx, config.URI, suite, f)
 		if err != nil {
-			return fmt.Errorf("error while writing %s to MFS: %w", f.Hashes.Filename, err)
+			return fmt.Errorf("writing %s to MFS: %w", f.Hashes.Filename, err)
 		}
 	}
 
@@ -119,7 +119,7 @@ func syncAllPackages(
 	slog.InfoContext(ctx, "Getting Packages files")
 	packages, err := client.Packages(ctx, config.URI, suite, component)
 	if err != nil {
-		return fmt.Errorf("error while fetching Packages: %w", err)
+		return fmt.Errorf("fetching Packages: %w", err)
 	}
 
 	for _, p := range packages.Packages {
@@ -136,7 +136,7 @@ func syncAllPackages(
 
 	err = upsertPackages(ctx, kubo, client, config, packages.Packages, bar)
 	if err != nil {
-		return fmt.Errorf("error while upserting packages: %w", err)
+		return fmt.Errorf("upserting packages: %w", err)
 	}
 
 	// Commit packages. Since there's no previous Packages file, we commit
@@ -151,7 +151,7 @@ func syncAllPackages(
 
 		err = kubo.WritePackages(ctx, config.URI, suite, f)
 		if err != nil {
-			return fmt.Errorf("error while writing %s to MFS: %w", f.Hashes.Filename, err)
+			return fmt.Errorf("writing %s to MFS: %w", f.Hashes.Filename, err)
 		}
 	}
 

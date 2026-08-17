@@ -19,10 +19,10 @@ type Client struct {
 func (k *Client) Version(ctx context.Context) (*semver.Version, error) {
 	resp, err := k.Request("version").Send(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get version from Kubo: %w", err)
+		return nil, fmt.Errorf("getting version from Kubo: %w", err)
 	}
 	if resp.Error != nil {
-		return nil, fmt.Errorf("couldn't get version from Kubo: %w", resp.Error)
+		return nil, fmt.Errorf("kubo error (%d) %q", resp.Error.Code, resp.Error.Message)
 	}
 	defer resp.Close()
 

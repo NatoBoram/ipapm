@@ -54,11 +54,11 @@ func (k *Client) filesWrite(ctx context.Context, fileName string, body io.Reader
 
 	resp, err := req.Send(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to write %s to MFS: %w", fileName, err)
+		return fmt.Errorf("writing %s to MFS: %w", fileName, err)
 	}
 	defer resp.Close()
 	if resp.Error != nil {
-		return fmt.Errorf("kubo error (%d) \"%s\"", resp.Error.Code, resp.Error.Message)
+		return fmt.Errorf("kubo error (%d) %q", resp.Error.Code, resp.Error.Message)
 	}
 
 	return nil

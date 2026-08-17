@@ -11,7 +11,7 @@ func ConfigDir(env Env) (string, error) {
 
 	err := os.MkdirAll(path, os.ModePerm)
 	if err != nil {
-		return path, fmt.Errorf("failed to create config dir: %w", err)
+		return path, fmt.Errorf("creating config dir: %w", err)
 	}
 
 	return path, err

@@ -62,7 +62,7 @@ func (c *Client) Sources(
 	for _, file := range component.Files {
 		downloaded, err := c.file(ctx, uri, suite, file)
 		if err != nil {
-			return SourcesBytes{}, fmt.Errorf("couldn't download Sources: %w", err)
+			return SourcesBytes{}, fmt.Errorf("downloading Sources: %w", err)
 		}
 
 		downloads = append(downloads, downloaded)
@@ -70,12 +70,12 @@ func (c *Client) Sources(
 
 	uncompressed, err := UncompressSources(downloads)
 	if err != nil {
-		return SourcesBytes{}, fmt.Errorf("couldn't uncompress Sources: %w", err)
+		return SourcesBytes{}, fmt.Errorf("uncompressing Sources: %w", err)
 	}
 
 	parsed, err := ParseSources(uncompressed)
 	if err != nil {
-		return SourcesBytes{}, fmt.Errorf("couldn't parse Sources: %w", err)
+		return SourcesBytes{}, fmt.Errorf("parsing Sources: %w", err)
 	}
 
 	return SourcesBytes{
@@ -99,13 +99,13 @@ func UncompressSources(downloads []FileByte) (io.Reader, error) {
 			r := bytes.NewReader(download.Bytes)
 			u, err := gzip.NewReader(r)
 			if err != nil {
-				return nil, fmt.Errorf("failed to open gzip stream: %w", err)
+				return nil, fmt.Errorf("opening gzip stream: %w", err)
 			}
 			defer u.Close()
 
 			uncompressed, err := io.ReadAll(u)
 			if err != nil {
-				return nil, fmt.Errorf("failed to decompress gzip stream: %w", err)
+				return nil, fmt.Errorf("decompressing gzip stream: %w", err)
 			}
 
 			return bytes.NewReader(uncompressed), nil
@@ -115,7 +115,7 @@ func UncompressSources(downloads []FileByte) (io.Reader, error) {
 
 			uncompressed, err := io.ReadAll(u)
 			if err != nil {
-				return nil, fmt.Errorf("failed to decompress bz2 stream: %w", err)
+				return nil, fmt.Errorf("decompressing bz2 stream: %w", err)
 			}
 
 			return bytes.NewReader(uncompressed), nil
@@ -236,7 +236,10 @@ func ParseSources(r io.Reader) (Sources, error) {
 			if err != nil {
 				current.Warnings = append(
 					current.Warnings,
-					fmt.Errorf("error parsing Homepage for source %s %s: %w", current.Package, current.Version, err),
+					fmt.Errorf(
+						"parsing %s for source %s %s: %w",
+						key, current.Package, current.Version, err,
+					),
 				)
 				continue
 			}
@@ -246,7 +249,10 @@ func ParseSources(r io.Reader) (Sources, error) {
 			if err != nil {
 				current.Warnings = append(
 					current.Warnings,
-					fmt.Errorf("error parsing Vcs-Browser for source %s %s: %w", current.Package, current.Version, err),
+					fmt.Errorf(
+						"parsing %s for source %s %s: %w",
+						key, current.Package, current.Version, err,
+					),
 				)
 				continue
 			}
@@ -256,7 +262,10 @@ func ParseSources(r io.Reader) (Sources, error) {
 			if err != nil {
 				current.Warnings = append(
 					current.Warnings,
-					fmt.Errorf("error parsing Vcs-Git for source %s %s: %w", current.Package, current.Version, err),
+					fmt.Errorf(
+						"parsing %s for source %s %s: %w",
+						key, current.Package, current.Version, err,
+					),
 				)
 				continue
 			}
@@ -275,7 +284,7 @@ func ParseSources(r io.Reader) (Sources, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return Sources{}, fmt.Errorf("failed to scan Sources file: %w", err)
+		return Sources{}, fmt.Errorf("scanning Sources file: %w", err)
 	}
 
 	if current.Package != "" && current.Directory != "" {

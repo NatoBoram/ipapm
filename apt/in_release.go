@@ -50,17 +50,20 @@ func (c *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (InR
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
-		return InRelease{}, fmt.Errorf("failed to build request for %s: %w", target, err)
+		return InRelease{}, fmt.Errorf("building request for %q: %w", target, err)
 	}
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return InRelease{}, fmt.Errorf("failed to fetch %s: %w", target, err)
+		return InRelease{}, fmt.Errorf("requesting %q: %w", target, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return InRelease{}, fmt.Errorf("unexpected status code %d for %s", resp.StatusCode, target)
+		return InRelease{}, fmt.Errorf(
+			"unexpected status %s for %q",
+			resp.Status, target,
+		)
 	}
 
 	return ParseInRelease(resp.Body)
@@ -81,7 +84,7 @@ const (
 func ParseInRelease(r io.Reader) (InRelease, error) {
 	raw, err := io.ReadAll(r)
 	if err != nil {
-		return InRelease{}, fmt.Errorf("failed to read InRelease file: %w", err)
+		return InRelease{}, fmt.Errorf("reading InRelease file: %w", err)
 	}
 
 	scanner := bufio.NewScanner(bytes.NewReader(raw))
@@ -165,7 +168,7 @@ func ParseInRelease(r io.Reader) (InRelease, error) {
 				manifest.Warnings = append(
 					manifest.Warnings,
 					fmt.Errorf(
-						"error while parsing package size for %s in %s: %w",
+						"parsing package size for %q in %s: %w",
 						path, section, err,
 					),
 				)
@@ -206,7 +209,7 @@ func ParseInRelease(r io.Reader) (InRelease, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return InRelease{}, fmt.Errorf("failed to scan InRelease file: %w", err)
+		return InRelease{}, fmt.Errorf("scanning InRelease file: %w", err)
 	}
 
 	return manifest, nil

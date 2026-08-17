@@ -15,7 +15,7 @@ func (k *Client) NamePublish(ctx context.Context, keyName, cid string) (ipns.Nam
 	kkey := k.Key()
 	keys, err := kkey.List(ctx)
 	if err != nil {
-		return ipns.Name{}, fmt.Errorf("failed to list keys: %w", err)
+		return ipns.Name{}, fmt.Errorf("listing keys: %w", err)
 	}
 
 	_, ok := wheel.Find(keys, func(key iface.Key) bool {
@@ -24,19 +24,19 @@ func (k *Client) NamePublish(ctx context.Context, keyName, cid string) (ipns.Nam
 	if !ok {
 		_, err := kkey.Generate(ctx, keyName)
 		if err != nil {
-			return ipns.Name{}, fmt.Errorf("failed to generate key %s: %w", keyName, err)
+			return ipns.Name{}, fmt.Errorf("generating key %s: %w", keyName, err)
 		}
 	}
 
 	p, err := cmdutils.PathOrCidPath(cid)
 	if err != nil {
-		return ipns.Name{}, fmt.Errorf("invalid CID: %w", err)
+		return ipns.Name{}, fmt.Errorf("parsing CID %s: %w", cid, err)
 	}
 
 	opt := options.Name.Key(keyName)
 	name, err := k.Name().Publish(ctx, p, opt)
 	if err != nil {
-		return ipns.Name{}, fmt.Errorf("failed to publish to IPNS: %w", err)
+		return ipns.Name{}, fmt.Errorf("publishing %s to IPNS: %w", cid, err)
 	}
 
 	return name, nil

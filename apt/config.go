@@ -26,7 +26,7 @@ func MapConfigs(configs []config.Source) (Configs, error) {
 		for _, uri := range source.URIs {
 			if m, ok := mapped[uri]; ok {
 				if m.SignedBy != source.SignedBy {
-					return nil, fmt.Errorf("conflicting SignedBy for %s: %s vs %s", uri, m.SignedBy, source.SignedBy)
+					return nil, fmt.Errorf("conflicting SignedBy for %q: %q vs %q", uri, m.SignedBy, source.SignedBy)
 				}
 
 				m.Suites.Add(source.Suites...)
@@ -36,7 +36,7 @@ func MapConfigs(configs []config.Source) (Configs, error) {
 
 			url, err := url.ParseRequestURI(uri)
 			if err != nil {
-				return nil, fmt.Errorf("invalid uri: %w", err)
+				return nil, fmt.Errorf("parsing %q: %w", uri, err)
 			}
 
 			mapped[uri] = Config{

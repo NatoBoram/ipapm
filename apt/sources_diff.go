@@ -35,12 +35,12 @@ func (p Sources) Diff(n Sources) (SourcesDiff, error) {
 
 		ph, err := pv.FileHashes()
 		if err != nil {
-			return SourcesDiff{}, fmt.Errorf("failed to get files from previous source %s: %w", pk, err)
+			return SourcesDiff{}, fmt.Errorf("getting files from previous source %q: %w", pk, err)
 		}
 
 		nh, err := nv.FileHashes()
 		if err != nil {
-			return SourcesDiff{}, fmt.Errorf("failed to get files from next source %s: %w", pk, err)
+			return SourcesDiff{}, fmt.Errorf("getting files from next source %q: %w", pk, err)
 		}
 
 		fhd := ph.Diff(nh)

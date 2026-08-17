@@ -19,7 +19,7 @@ func New(config Config, c *http.Client) (*Client, error) {
 	kubo, err := rpc.NewURLApiWithClient(config.KUBO_API_URL, c)
 	client := new(Client{HttpApi: kubo, MFS: config.MFS})
 	if err != nil {
-		return client, fmt.Errorf("couldn't create a new api client: %w", err)
+		return client, fmt.Errorf("creating a new API client: %w", err)
 	}
 
 	if config.KUBO_API_AUTH == "" {
@@ -28,7 +28,7 @@ func New(config Config, c *http.Client) (*Client, error) {
 
 	secret, err := DecodeAuthSecret(config.KUBO_API_AUTH)
 	if err != nil {
-		return client, fmt.Errorf("couldn't decode auth secret: %w", err)
+		return client, fmt.Errorf("decoding auth secret: %w", err)
 	}
 	if secret.Token != "" {
 		client.Headers.Add("Authorization", fmt.Sprintf("Bearer %s", secret.Token))

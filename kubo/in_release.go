@@ -18,7 +18,7 @@ func (k *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (apt
 
 	resp, err := k.Request("files/read", target).Send(ctx)
 	if err != nil {
-		return apt.InRelease{}, fmt.Errorf("failed to request InRelease file from MFS: %w", err)
+		return apt.InRelease{}, fmt.Errorf("requesting InRelease file from MFS: %w", err)
 	}
 	defer resp.Close()
 	if resp.Error != nil {
@@ -26,7 +26,7 @@ func (k *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (apt
 			return apt.InRelease{}, fmt.Errorf("%s: %w", target, os.ErrNotExist)
 		}
 
-		return apt.InRelease{}, fmt.Errorf("kubo error (%d) \"%s\"", resp.Error.Code, resp.Error.Message)
+		return apt.InRelease{}, fmt.Errorf("kubo error (%d) %q", resp.Error.Code, resp.Error.Message)
 	}
 
 	return apt.ParseInRelease(resp.Output)
