@@ -55,13 +55,13 @@ func syncAll(
 
 		r, err := client.StreamFile(ctx, config.URI, suite, file)
 		if err != nil {
-			return fmt.Errorf("fetching file %s: %w", file.Filename, err)
+			return fmt.Errorf("fetching file %q: %w", file.Filename, err)
 		}
 
 		err = kubo.WriteFile(ctx, config.URI, suite, file, r)
 		r.Close()
 		if err != nil {
-			return fmt.Errorf("writing %s to MFS: %w", file.Filename, err)
+			return fmt.Errorf("writing %q to MFS: %w", file.Filename, err)
 		}
 
 		bar.Increment()
