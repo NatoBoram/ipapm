@@ -1,0 +1,75 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build:
+    permissions:
+      contents: read
+
+    if: github.actor != 'nektos/act'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+
+      - run: make build
+
+      - if: github.actor != 'nektos/act'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ipapm
+          path: ipapm
+          compression-level: 9
+          if-no-files-found: error
+
+  attest:
+    permissions:
+      artifact-metadata: write
+      attestations: write
+      id-token: write
+
+    needs: build
+    if: github.actor != 'nektos/act'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: ipapm
+
+      - uses: actions/attest@v4
+        with:
+          subject-path: ipapm
+
+  release:
+    permissions:
+      contents: write
+
+    needs:
+      - attest
+      - build
+    if: github.actor != 'nektos/act'
+    runs-on: ubuntu-latest
+
+    environment:
+      name: releases
+      url: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: ipapm
+
+      - run: gh release create "$VERSION" --generate-notes --repo "$REPO" --title "$VERSION" --verify-tag ipapm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          VERSION: ${{ github.ref_name }}
