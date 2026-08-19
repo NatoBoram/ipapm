@@ -19,6 +19,9 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      GOAMD64: v3
+
     steps:
       - uses: actions/checkout@v7
 
