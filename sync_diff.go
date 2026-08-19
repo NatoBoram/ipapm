@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/NatoBoram/ipapm/apt"
+	"github.com/NatoBoram/ipapm/http"
 	"github.com/NatoBoram/ipapm/kubo"
 	"github.com/NatoBoram/ipapm/progress"
 	"github.com/NatoBoram/ipapm/wheel"
@@ -85,6 +86,18 @@ func syncDiff(
 
 		r, err := client.StreamFile(ctx, config.URI, suite, f)
 		if err != nil {
+			if errors.Is(err, http.ErrNotFound) {
+				slog.WarnContext(ctx, "File not found, skipping", "error", err)
+
+				err := kubo.RemoveFile(ctx, config.URI, suite, f)
+				if err != nil {
+					return fmt.Errorf("removing %q from MFS: %w", f.Filename, err)
+				}
+
+				bar.Increment()
+				continue
+			}
+
 			return fmt.Errorf("fetching file %q: %w", f.Filename, err)
 		}
 
@@ -163,9 +176,16 @@ func syncDiffSources(
 		)
 
 		slog.InfoContext(ctx, "Removing source from MFS")
-		err = kubo.RemoveSource(ctx, config.URI, suite, removed)
+		fhs, err := removed.FileHashes()
 		if err != nil {
-			return fmt.Errorf("removing %q from MFS: %w", removed.Package, err)
+			return fmt.Errorf("getting file hashes for source %s %s: %w", removed.Package, removed.Version, err)
+		}
+
+		for _, fh := range fhs {
+			err = kubo.RemoveSource(ctx, config.URI, fh)
+			if err != nil {
+				return fmt.Errorf("removing source %q from MFS: %w", fh.Filename, err)
+			}
 		}
 	}
 
@@ -255,7 +275,7 @@ func syncDiffPackages(
 		)
 
 		slog.InfoContext(ctx, "Removing package from MFS")
-		err = kubo.RemovePackage(ctx, config.URI, suite, removed)
+		err = kubo.RemovePackage(ctx, config.URI, removed)
 		if err != nil {
 			return fmt.Errorf("removing %q from MFS: %w", removed.Filename, err)
 		}

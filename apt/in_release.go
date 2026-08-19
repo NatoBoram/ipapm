@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	h "github.com/NatoBoram/ipapm/http"
 )
 
 // InRelease is a parsed InRelease file from a Debian Repository.
@@ -59,11 +61,11 @@ func (c *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (InR
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusNotFound {
+		return InRelease{}, fmt.Errorf("unexpected status for %q: %w", target, h.ErrNotFound)
+	}
 	if resp.StatusCode != http.StatusOK {
-		return InRelease{}, fmt.Errorf(
-			"unexpected status %s for %q",
-			resp.Status, target,
-		)
+		return InRelease{}, fmt.Errorf("unexpected status %s for %q", resp.Status, target)
 	}
 
 	return ParseInRelease(resp.Body)

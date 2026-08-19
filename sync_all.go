@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/NatoBoram/ipapm/apt"
+	"github.com/NatoBoram/ipapm/http"
 	"github.com/NatoBoram/ipapm/kubo"
 	"github.com/NatoBoram/ipapm/progress"
 	slogctx "github.com/veqryn/slog-context"
@@ -55,6 +57,18 @@ func syncAll(
 
 		r, err := client.StreamFile(ctx, config.URI, suite, file)
 		if err != nil {
+			if errors.Is(err, http.ErrNotFound) {
+				slog.WarnContext(ctx, "File not found, skipping", "error", err)
+
+				err := kubo.RemoveFile(ctx, config.URI, suite, file)
+				if err != nil {
+					return fmt.Errorf("removing %q from MFS: %w", file.Filename, err)
+				}
+
+				bar.Increment()
+				continue
+			}
+
 			return fmt.Errorf("fetching file %q: %w", file.Filename, err)
 		}
 

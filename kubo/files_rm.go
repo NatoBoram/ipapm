@@ -9,26 +9,14 @@ import (
 	"github.com/NatoBoram/ipapm/apt"
 )
 
-func (k *Client) RemovePackage(ctx context.Context, uri *url.URL, suite string, file apt.Package) error {
+func (k *Client) RemovePackage(ctx context.Context, uri *url.URL, file apt.Package) error {
 	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), file.Filename)
 	return k.filesRm(ctx, target)
 }
 
-func (k *Client) RemoveSource(ctx context.Context, uri *url.URL, suite string, file apt.Source) error {
-	files, err := file.FileHashes()
-	if err != nil {
-		return fmt.Errorf("getting file hashes for source %q: %w", file.Directory, err)
-	}
-
-	for _, f := range files {
-		target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), f.Filename)
-		err := k.filesRm(ctx, target)
-		if err != nil {
-			return fmt.Errorf("removing source file %q: %w", f.Filename, err)
-		}
-	}
-
-	return nil
+func (k *Client) RemoveSource(ctx context.Context, uri *url.URL, file apt.FileHash) error {
+	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), file.Filename)
+	return k.filesRm(ctx, target)
 }
 
 func (k *Client) RemoveComponent(ctx context.Context, uri *url.URL, suite string, component apt.Component) error {
@@ -60,9 +48,16 @@ func (k *Client) removeComponentSources(ctx context.Context, uri *url.URL, suite
 	}
 
 	for _, source := range sources.Sources {
-		err = k.RemoveSource(ctx, uri, suite, source)
+		fhs, err := source.FileHashes()
 		if err != nil {
-			return fmt.Errorf("removing source %q: %w", source.Directory, err)
+			return fmt.Errorf("getting file hashes for source %s %s: %w", source.Package, source.Version, err)
+		}
+
+		for _, fh := range fhs {
+			err = k.RemoveSource(ctx, uri, fh)
+			if err != nil {
+				return fmt.Errorf("removing source for %s %s: %w", source.Package, source.Version, err)
+			}
 		}
 	}
 
@@ -76,7 +71,7 @@ func (k *Client) removeComponentPackages(ctx context.Context, uri *url.URL, suit
 	}
 
 	for _, file := range packages.Packages {
-		err = k.RemovePackage(ctx, uri, suite, file)
+		err = k.RemovePackage(ctx, uri, file)
 		if err != nil {
 			return fmt.Errorf("removing package %s %s: %w", file.Package, file.Version, err)
 		}
