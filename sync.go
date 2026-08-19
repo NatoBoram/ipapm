@@ -12,6 +12,7 @@ import (
 	"github.com/NatoBoram/ipapm/apt"
 	"github.com/NatoBoram/ipapm/config"
 	"github.com/NatoBoram/ipapm/env"
+	"github.com/NatoBoram/ipapm/http"
 	"github.com/NatoBoram/ipapm/kubo"
 	"github.com/NatoBoram/ipapm/progress"
 	slogctx "github.com/veqryn/slog-context"
@@ -191,6 +192,13 @@ func upsertSources(
 
 			r, err := client.StreamSource(ctx, source.URI, f)
 			if err != nil {
+				r.Close()
+
+				if errors.Is(err, http.ErrNotFound) {
+					slog.WarnContext(ctx, "File not found, skipping", "error", err)
+					continue
+				}
+
 				return fmt.Errorf("fetching source %q: %w", f.Filename, err)
 			}
 
@@ -225,6 +233,13 @@ func upsertPackages(
 
 		r, err := client.StreamPackage(ctx, source.URI, p.FileHash())
 		if err != nil {
+			r.Close()
+
+			if errors.Is(err, http.ErrNotFound) {
+				slog.WarnContext(ctx, "File not found, skipping", "error", err)
+				continue
+			}
+
 			return fmt.Errorf("fetching package %q: %w", p.Filename, err)
 		}
 

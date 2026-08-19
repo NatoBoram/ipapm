@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/NatoBoram/ipapm/apt"
+	"github.com/NatoBoram/ipapm/http"
 	"github.com/NatoBoram/ipapm/kubo"
 	"github.com/NatoBoram/ipapm/progress"
 	"github.com/NatoBoram/ipapm/wheel"
@@ -85,6 +86,13 @@ func syncDiff(
 
 		r, err := client.StreamFile(ctx, config.URI, suite, f)
 		if err != nil {
+			r.Close()
+
+			if errors.Is(err, http.ErrNotFound) {
+				slog.WarnContext(ctx, "File not found, skipping", "error", err)
+				continue
+			}
+
 			return fmt.Errorf("fetching file %q: %w", f.Filename, err)
 		}
 

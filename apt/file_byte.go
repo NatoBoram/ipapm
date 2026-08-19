@@ -13,6 +13,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	h "github.com/NatoBoram/ipapm/http"
 )
 
 // FileByte is a file from a Debian Repository along with its hashes.
@@ -40,11 +42,11 @@ func (c *Client) file(
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusNotFound {
+		return FileByte{}, fmt.Errorf("unexpected status for %q: %w", target, h.ErrNotFound)
+	}
 	if resp.StatusCode != http.StatusOK {
-		return FileByte{}, fmt.Errorf(
-			"unexpected status %s for %q",
-			resp.Status, target,
-		)
+		return FileByte{}, fmt.Errorf("unexpected status %s for %q", resp.Status, target)
 	}
 
 	multiHasher := makeHashers(file)

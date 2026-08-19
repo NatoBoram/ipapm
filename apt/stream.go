@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	h "github.com/NatoBoram/ipapm/http"
 )
 
 func (c *Client) StreamFile(ctx context.Context, uri *url.URL, suite string, file FileHash) (io.ReadCloser, error) {
@@ -36,6 +38,11 @@ func (c *Client) stream(ctx context.Context, file FileHash, target *url.URL) (io
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
+
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf("unexpected status for %q: %w", target, h.ErrNotFound)
+		}
+
 		return nil, fmt.Errorf("unexpected status %s for %q", resp.Status, target)
 	}
 
