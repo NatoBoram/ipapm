@@ -197,7 +197,7 @@ func upsertSources(
 
 					err := kubo.RemoveSource(ctx, source.URI, f)
 					if err != nil {
-						slog.WarnContext(ctx, "Failed to remove source from MFS", "error", err)
+						return fmt.Errorf("removing %q from MFS: %w", f.Filename, err)
 					}
 
 					bar.Increment()
@@ -243,7 +243,7 @@ func upsertPackages(
 
 				err := kubo.RemovePackage(ctx, source.URI, p)
 				if err != nil {
-					slog.WarnContext(ctx, "Failed to remove file from MFS", "error", err)
+					return fmt.Errorf("removing %q from MFS: %w", p.Filename, err)
 				}
 
 				bar.Increment()

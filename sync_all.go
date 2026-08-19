@@ -62,7 +62,7 @@ func syncAll(
 
 				err := kubo.RemoveFile(ctx, config.URI, suite, file)
 				if err != nil {
-					slog.WarnContext(ctx, "Failed to remove file from MFS", "error", err)
+					return fmt.Errorf("removing %q from MFS: %w", file.Filename, err)
 				}
 
 				bar.Increment()

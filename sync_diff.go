@@ -91,7 +91,7 @@ func syncDiff(
 
 				err := kubo.RemoveFile(ctx, config.URI, suite, f)
 				if err != nil {
-					slog.WarnContext(ctx, "Failed to remove file from MFS", "error", err)
+					return fmt.Errorf("removing %q from MFS: %w", f.Filename, err)
 				}
 
 				bar.Increment()
