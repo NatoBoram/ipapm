@@ -94,6 +94,7 @@ func syncDiff(
 					slog.WarnContext(ctx, "Failed to remove file from MFS", "error", err)
 				}
 
+				bar.Increment()
 				continue
 			}
 

@@ -200,6 +200,7 @@ func upsertSources(
 						slog.WarnContext(ctx, "Failed to remove source from MFS", "error", err)
 					}
 
+					bar.Increment()
 					continue
 				}
 
@@ -245,6 +246,7 @@ func upsertPackages(
 					slog.WarnContext(ctx, "Failed to remove file from MFS", "error", err)
 				}
 
+				bar.Increment()
 				continue
 			}
 
