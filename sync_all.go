@@ -57,8 +57,6 @@ func syncAll(
 
 		r, err := client.StreamFile(ctx, config.URI, suite, file)
 		if err != nil {
-			r.Close()
-
 			if errors.Is(err, http.ErrNotFound) {
 				slog.WarnContext(ctx, "File not found, skipping", "error", err)
 
