@@ -61,6 +61,12 @@ func syncAll(
 
 			if errors.Is(err, http.ErrNotFound) {
 				slog.WarnContext(ctx, "File not found, skipping", "error", err)
+
+				err := kubo.RemoveFile(ctx, config.URI, suite, file)
+				if err != nil {
+					slog.WarnContext(ctx, "Failed to remove file from MFS", "error", err)
+				}
+
 				continue
 			}
 

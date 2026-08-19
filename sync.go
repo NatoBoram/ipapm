@@ -195,7 +195,13 @@ func upsertSources(
 				r.Close()
 
 				if errors.Is(err, http.ErrNotFound) {
-					slog.WarnContext(ctx, "File not found, skipping", "error", err)
+					slog.WarnContext(ctx, "Source not found, skipping", "error", err)
+
+					err := kubo.RemoveSource(ctx, source.URI, f)
+					if err != nil {
+						slog.WarnContext(ctx, "Failed to remove source from MFS", "error", err)
+					}
+
 					continue
 				}
 
@@ -237,6 +243,12 @@ func upsertPackages(
 
 			if errors.Is(err, http.ErrNotFound) {
 				slog.WarnContext(ctx, "File not found, skipping", "error", err)
+
+				err := kubo.RemovePackage(ctx, source.URI, p)
+				if err != nil {
+					slog.WarnContext(ctx, "Failed to remove file from MFS", "error", err)
+				}
+
 				continue
 			}
 
