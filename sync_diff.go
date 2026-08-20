@@ -44,12 +44,12 @@ func syncDiff(
 		)
 
 		if component.Architecture == "source" {
-			err := syncDiffSources(ctx, kubo, client, config, suite, component, bar)
+			err := syncSources(ctx, kubo, client, config, suite, component, bar)
 			if err != nil {
 				return fmt.Errorf("syncing sources: %w", err)
 			}
 		} else {
-			err := syncDiffPackages(ctx, kubo, client, config, suite, component, bar)
+			err := syncPackages(ctx, kubo, client, config, suite, component, bar)
 			if err != nil {
 				return fmt.Errorf("syncing packages: %w", err)
 			}
@@ -77,10 +77,7 @@ func syncDiff(
 	// Upsert files
 	upsert := wheel.MergeMaps(diff.Added, diff.Changed)
 	for _, f := range upsert {
-		ctx := slogctx.Prepend(
-			ctx,
-			"file", f.Filename,
-		)
+		ctx := slogctx.Prepend(ctx, "file", f.Filename)
 
 		slog.InfoContext(ctx, "Committing file")
 
@@ -112,10 +109,7 @@ func syncDiff(
 
 	// Remove files
 	for _, f := range diff.Removed {
-		ctx := slogctx.Prepend(
-			ctx,
-			"file", f.Filename,
-		)
+		ctx := slogctx.Prepend(ctx, "file", f.Filename)
 
 		slog.InfoContext(ctx, "Removing file from MFS")
 		err = kubo.RemoveFile(ctx, config.URI, suite, f)
@@ -129,7 +123,7 @@ func syncDiff(
 	return nil
 }
 
-func syncDiffSources(
+func syncSources(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
 	config apt.Config, suite string, component apt.Component,
 	bar *progress.Bar,
@@ -194,10 +188,7 @@ func syncDiffSources(
 	// Upsert Sources
 	upsertSrc := slices.Concat(srcDiff.Added, srcDiff.Changed)
 	for _, f := range upsertSrc {
-		ctx := slogctx.Prepend(
-			ctx,
-			"Sources", f.Hashes.Filename,
-		)
+		ctx := slogctx.Prepend(ctx, "Sources", f.Hashes.Filename)
 
 		slog.InfoContext(ctx, "Committing Sources file")
 
@@ -209,10 +200,7 @@ func syncDiffSources(
 
 	// Remove Sources
 	for _, f := range srcDiff.Removed {
-		ctx := slogctx.Prepend(
-			ctx,
-			"Sources", f.Hashes.Filename,
-		)
+		ctx := slogctx.Prepend(ctx, "Sources", f.Hashes.Filename)
 
 		slog.InfoContext(ctx, "Removing Sources file from MFS")
 		err = kubo.RemoveSources(ctx, config.URI, suite, f)
@@ -224,7 +212,7 @@ func syncDiffSources(
 	return nil
 }
 
-func syncDiffPackages(
+func syncPackages(
 	ctx context.Context, kubo *kubo.Client, client *apt.Client,
 	config apt.Config, suite string, component apt.Component,
 	bar *progress.Bar,
@@ -286,10 +274,7 @@ func syncDiffPackages(
 	// Upsert Packages
 	pkgUpsert := slices.Concat(pkgDiff.Added, pkgDiff.Changed)
 	for _, f := range pkgUpsert {
-		ctx := slogctx.Prepend(
-			ctx,
-			"Packages", f.Hashes.Filename,
-		)
+		ctx := slogctx.Prepend(ctx, "Packages", f.Hashes.Filename)
 
 		slog.InfoContext(ctx, "Committing Packages file")
 
@@ -301,10 +286,7 @@ func syncDiffPackages(
 
 	// Remove Packages
 	for _, f := range pkgDiff.Removed {
-		ctx := slogctx.Prepend(
-			ctx,
-			"Packages", f.Hashes.Filename,
-		)
+		ctx := slogctx.Prepend(ctx, "Packages", f.Hashes.Filename)
 
 		slog.InfoContext(ctx, "Removing Packages file from MFS")
 		err = kubo.RemovePackages(ctx, config.URI, suite, f)

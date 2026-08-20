@@ -131,25 +131,18 @@ func syncSuite(
 
 	// Get InRelease from MFS
 	previous, err := kubo.InRelease(ctx, config.URI, suite)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("fetching InRelease from MFS: %w", err)
-	}
-
-	// Sync
-	if errors.Is(err, os.ErrNotExist) {
-		slog.InfoContext(ctx, "No previous InRelease file in MFS")
-
-		err = syncAll(ctx, kubo, client, config, suite, next, bar)
-		if err != nil {
-			return fmt.Errorf("syncing all files: %w", err)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("fetching InRelease from MFS: %w", err)
 		}
+		slog.InfoContext(ctx, "No previous InRelease file in MFS")
 	} else {
 		slog.InfoContext(ctx, "Got previous InRelease file from MFS")
+	}
 
-		err = syncDiff(ctx, kubo, client, config, suite, next, previous, bar)
-		if err != nil {
-			return fmt.Errorf("syncing diff: %w", err)
-		}
+	err = syncDiff(ctx, kubo, client, config, suite, next, previous, bar)
+	if err != nil {
+		return fmt.Errorf("syncing diff: %w", err)
 	}
 
 	slog.InfoContext(ctx, "Committing InRelease file")
