@@ -1,0 +1,25 @@
+name: Copilot Setup Steps
+
+on:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yaml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yaml
+
+jobs:
+  copilot-setup-steps:
+    permissions:
+      contents: read
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - run: go mod download
