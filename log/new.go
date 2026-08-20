@@ -22,7 +22,7 @@ type Config struct {
 func handler(c Config) slog.Handler {
 	if c.GO_ENV == env.Production {
 		return slog.NewJSONHandler(os.Stdout, new(slog.HandlerOptions{
-			Level: slog.LevelInfo,
+			Level: slog.LevelDebug,
 		}))
 	}
 
