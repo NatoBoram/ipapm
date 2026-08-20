@@ -44,7 +44,7 @@ func syncConfig(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt
 				bar.Finish()
 
 				if err != nil {
-					slog.WarnContext(ctx, "Error while syncing source", slog.Any("error", err))
+					slog.ErrorContext(ctx, "Error while syncing source", slog.Any("error", err))
 				}
 			}
 		})

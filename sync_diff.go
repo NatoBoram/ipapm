@@ -34,7 +34,7 @@ func syncDiff(
 	pcomponents := previous.ByComponents(pfiles)
 
 	diffComponents := pcomponents.Diff(ncomponents)
-	slog.InfoContext(
+	slog.DebugContext(
 		ctx, "Components diff",
 		"added", len(diffComponents.Added), "changed", len(diffComponents.Changed),
 		"removed", len(diffComponents.Removed),
@@ -158,7 +158,7 @@ func syncSources(
 	if err != nil {
 		return fmt.Errorf("diffing sources: %w", err)
 	}
-	slog.InfoContext(
+	slog.DebugContext(
 		ctx, "Sources diff",
 		"added", len(diff.Added), "changed", len(diff.Changed),
 		"removed", len(diff.Removed),
@@ -256,7 +256,7 @@ func syncPackages(
 	)
 
 	diff := ppackages.Packages.Diff(npackages.Packages)
-	slog.InfoContext(
+	slog.DebugContext(
 		ctx, "Packages diff",
 		"added", len(diff.Added), "changed", len(diff.Changed),
 		"removed", len(diff.Removed),

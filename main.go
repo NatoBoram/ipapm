@@ -35,7 +35,7 @@ func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client,
 		case <-timer.C:
 			err := syncConfig(ctx, env, kubo, apt, pool)
 			if err != nil {
-				slog.WarnContext(ctx, "Error during sync", slog.Any("error", err))
+				slog.ErrorContext(ctx, "Error during sync", slog.Any("error", err))
 			}
 		}
 
@@ -49,10 +49,7 @@ func run(ctx context.Context, pool *progress.Pool) error {
 		return fmt.Errorf("loading environment variables: %w", err)
 	}
 
-	slog.InfoContext(
-		ctx, "Loading config",
-		slog.String("CONFIG_DIR", env.CONFIG_DIR),
-	)
+	slog.InfoContext(ctx, "Loading config", "CONFIG_DIR", env.CONFIG_DIR)
 	config, err := config.Load(config.Env{CONFIG_DIR: env.CONFIG_DIR, Name: env.Name})
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
@@ -62,7 +59,7 @@ func run(ctx context.Context, pool *progress.Pool) error {
 	if err != nil {
 		return fmt.Errorf("getting user agent: %w", err)
 	}
-	slog.DebugContext(ctx, "User-Agent", slog.String("User-Agent", userAgent))
+	slog.DebugContext(ctx, "User-Agent", "User-Agent", userAgent)
 
 	client := h.New(new(h.Transport{
 		RoundTripper: http.DefaultTransport,
@@ -83,9 +80,9 @@ func run(ctx context.Context, pool *progress.Pool) error {
 
 	v, err := kubo.Version(ctx)
 	if err != nil {
-		slog.WarnContext(ctx, "Couldn't connect to Kubo", slog.Any("error", err))
+		slog.WarnContext(ctx, "Couldn't connect to Kubo", "error", err)
 	} else {
-		slog.InfoContext(ctx, "Connected to Kubo", slog.String("version", v.String()))
+		slog.InfoContext(ctx, "Connected to Kubo", "version", v.String())
 	}
 
 	apt := apt.New(client)
@@ -99,7 +96,7 @@ func run(ctx context.Context, pool *progress.Pool) error {
 	go func() { served <- server.ListenAndServe() }()
 	slog.InfoContext(
 		ctx, "Starting server",
-		slog.String("url", fmt.Sprintf("http://localhost:%d", config.Port)),
+		"url", fmt.Sprintf("http://localhost:%d", config.Port),
 	)
 
 	go start(ctx, env, kubo, apt, pool)
