@@ -37,7 +37,7 @@ func syncConfig(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt
 	for range min(len(mapped), 4) {
 		wg.Go(func() {
 			for source := range jobs {
-				ctx = slogctx.Prepend(ctx, "uri", source.URI.String())
+				ctx := slogctx.Prepend(ctx, "uri", source.URI.String())
 
 				bar := pool.NewBar(path.Join(source.URI.Host, source.URI.Path))
 				err := syncSource(ctx, env, kubo, client, source, bar)
@@ -97,7 +97,7 @@ func syncSuites(
 	g.SetLimit(4)
 
 	for suite := range config.Suites {
-		ctx = slogctx.Prepend(ctx, "suite", suite)
+		ctx := slogctx.Prepend(ctx, "suite", suite)
 		g.Go(func() error { return syncSuite(ctx, kubo, client, config, suite, bar) })
 	}
 
