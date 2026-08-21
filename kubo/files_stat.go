@@ -2,7 +2,7 @@ package kubo
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/url"
 	"path"
@@ -44,8 +44,8 @@ func (k *Client) filesStat(ctx context.Context, target string) (FilesStat, error
 	}
 
 	var out FilesStat
-	if err := json.NewDecoder(resp.Output).Decode(&out); err != nil {
-		return FilesStat{}, fmt.Errorf("decoding files/stat response: %w", err)
+	if err := json.UnmarshalRead(resp.Output, &out); err != nil {
+		return FilesStat{}, fmt.Errorf("parsing files/stat: %w", err)
 	}
 
 	return out, nil

@@ -2,7 +2,7 @@ package kubo
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 
 	"github.com/blang/semver/v4"
@@ -27,7 +27,7 @@ func (k *Client) Version(ctx context.Context) (*semver.Version, error) {
 	defer resp.Close()
 
 	var out ipfs.VersionInfo
-	if err := json.NewDecoder(resp.Output).Decode(&out); err != nil {
+	if err := json.UnmarshalRead(resp.Output, &out); err != nil {
 		return nil, err
 	}
 
