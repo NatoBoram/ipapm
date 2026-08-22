@@ -2,7 +2,7 @@ package kubo
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/url"
 	"path"
@@ -23,7 +23,7 @@ type FilesStat struct {
 }
 
 func (k *Client) RepoRoot(ctx context.Context, uri *url.URL) (FilesStat, error) {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath())
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath())
 	if !path.IsAbs(target) {
 		target = "/" + target
 	}
@@ -40,12 +40,12 @@ func (k *Client) filesStat(ctx context.Context, target string) (FilesStat, error
 	defer resp.Close()
 
 	if resp.Error != nil {
-		return FilesStat{}, fmt.Errorf("kubo error (%d) %q", resp.Error.Code, resp.Error.Message)
+		return FilesStat{}, errorf("kubo error", resp.Error)
 	}
 
 	var out FilesStat
-	if err := json.NewDecoder(resp.Output).Decode(&out); err != nil {
-		return FilesStat{}, fmt.Errorf("decoding files/stat response: %w", err)
+	if err := json.UnmarshalRead(resp.Output, &out); err != nil {
+		return FilesStat{}, fmt.Errorf("parsing files/stat: %w", err)
 	}
 
 	return out, nil

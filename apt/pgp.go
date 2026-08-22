@@ -1,4 +1,4 @@
-package main
+package apt
 
 import (
 	"bytes"
@@ -55,7 +55,7 @@ func checkPgp(message string, keyring openpgp.EntityList) error {
 	return nil
 }
 
-func verifyPgp(signedBy, message string) error {
+func VerifyPgp(signedBy, message string) error {
 	key, err := loadPgp(signedBy)
 	if err != nil {
 		return fmt.Errorf("loading PGP key: %w", err)

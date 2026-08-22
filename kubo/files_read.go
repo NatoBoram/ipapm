@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"os"
 	"path"
 
 	"github.com/NatoBoram/ipapm/apt"
@@ -50,11 +49,7 @@ func (k *Client) fileByte(ctx context.Context, target string, file apt.FileHash)
 	}
 	defer resp.Close()
 	if resp.Error != nil {
-		if resp.Error.Message == fmt.Sprintf("%s: %s", target, os.ErrNotExist) {
-			return apt.FileByte{}, fmt.Errorf("%s: %w", target, os.ErrNotExist)
-		}
-
-		return apt.FileByte{}, fmt.Errorf("kubo error (%d) %q", resp.Error.Code, resp.Error.Message)
+		return apt.FileByte{}, errorf("kubo error", resp.Error)
 	}
 
 	bytes, err := io.ReadAll(resp.Output)

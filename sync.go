@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"path"
 	"sync"
@@ -59,12 +60,68 @@ func syncConfig(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt
 	return nil
 }
 
+func cleanMfs(
+	ctx context.Context, kubo *kubo.Client, uri *url.URL,
+	flat apt.FileHashes, ls []kubo.FilesLsEntry,
+) []error {
+	var errors []error
+	for _, file := range ls {
+		if ctx.Err() != nil {
+			return errors
+		}
+
+		ctx := slogctx.Prepend(ctx, "filename", file.Filename)
+
+		if _, ok := flat[file.Filename]; ok {
+			continue
+		}
+
+		slog.InfoContext(ctx, "Cleaning garbage from MFS")
+
+		err := kubo.RemoveGc(ctx, uri, file.Filename)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("removing %q from MFS: %w", file.Filename, err))
+		}
+	}
+
+	return errors
+}
+
 func syncSource(
 	ctx context.Context, env env.Env,
 	kubo *kubo.Client, client *apt.Client, config apt.Config,
 	bar *progress.Bar,
 ) error {
-	err := syncSuites(ctx, kubo, client, config, bar)
+	// Find all remote files
+	tree, err := client.Walk(ctx, config)
+	if err != nil {
+		return fmt.Errorf("walking config: %w", err)
+	}
+
+	flat, err := tree.Flat()
+	if err != nil {
+		return fmt.Errorf("flattening tree: %w", err)
+	}
+	slog.InfoContext(ctx, "Got list of files from remote", "count", len(flat))
+
+	// Find all MFS entries
+	ls, err := kubo.Walk(ctx, config.URI)
+	if err != nil {
+		slog.WarnContext(ctx, "Error while walking MFS", "error", err)
+	} else {
+		slog.InfoContext(ctx, "Got list of files in MFS", "count", len(ls))
+	}
+
+	// Garbage collection
+	errs := cleanMfs(ctx, kubo, config.URI, flat, ls)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			slog.WarnContext(ctx, "Error while cleaning MFS", "error", err)
+		}
+	}
+
+	// TODO: Send the whole tree here so we don't stream files twice
+	err = syncSuites(ctx, kubo, client, config, bar)
 	if err != nil {
 		return fmt.Errorf("syncing suites: %w", err)
 	}
@@ -72,10 +129,10 @@ func syncSource(
 	// Publish to IPNS
 	stat, err := kubo.RepoRoot(ctx, config.URI)
 	if err != nil {
-		return fmt.Errorf("getting suite stat: %w", err)
+		return fmt.Errorf("getting source stat: %w", err)
 	}
 
-	keyName := env.Name + ":" + path.Join(config.URI.Hostname(), config.URI.EscapedPath())
+	keyName := env.Name + ":" + path.Join(config.URI.Host, config.URI.EscapedPath())
 	name, err := kubo.NamePublish(ctx, keyName, stat.Hash)
 	if err != nil {
 		return fmt.Errorf("publishing to IPNS: %w", err)
@@ -123,7 +180,7 @@ func syncSuite(
 	slog.InfoContext(ctx, "Got InRelease file")
 
 	// Verify signature
-	err = verifyPgp(config.SignedBy, string(next.Raw))
+	err = apt.VerifyPgp(config.SignedBy, string(next.Raw))
 	if err != nil {
 		return fmt.Errorf("verifying PGP signature: %w", err)
 	}

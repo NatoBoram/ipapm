@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"path"
 
 	"github.com/NatoBoram/ipapm/apt"
@@ -22,11 +21,7 @@ func (k *Client) InRelease(ctx context.Context, uri *url.URL, suite string) (apt
 	}
 	defer resp.Close()
 	if resp.Error != nil {
-		if resp.Error.Message == fmt.Sprintf("%s: %s", target, os.ErrNotExist) {
-			return apt.InRelease{}, fmt.Errorf("%s: %w", target, os.ErrNotExist)
-		}
-
-		return apt.InRelease{}, fmt.Errorf("kubo error (%d) %q", resp.Error.Code, resp.Error.Message)
+		return apt.InRelease{}, errorf("kubo error", resp.Error)
 	}
 
 	return apt.ParseInRelease(resp.Output)
