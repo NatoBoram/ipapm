@@ -21,10 +21,11 @@ func (k *Client) Version(ctx context.Context) (*semver.Version, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting version from Kubo: %w", err)
 	}
+	defer resp.Close()
+
 	if resp.Error != nil {
 		return nil, errorf("kubo error", resp.Error)
 	}
-	defer resp.Close()
 
 	var out ipfs.VersionInfo
 	if err := json.UnmarshalRead(resp.Output, &out); err != nil {
