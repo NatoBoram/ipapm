@@ -180,7 +180,7 @@ func syncSuite(
 	slog.InfoContext(ctx, "Got InRelease file")
 
 	// Verify signature
-	err = verifyPgp(config.SignedBy, string(next.Raw))
+	err = apt.VerifyPgp(config.SignedBy, string(next.Raw))
 	if err != nil {
 		return fmt.Errorf("verifying PGP signature: %w", err)
 	}

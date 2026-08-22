@@ -79,17 +79,26 @@ func (c *Client) Walk(ctx context.Context, config Config) (Tree, error) {
 		var treeSuite TreeSuite
 		treeSuite.Suite = suite
 
+		// InRelease
 		in, err := c.InRelease(ctx, config.URI, suite)
 		if err != nil {
 			return Tree{}, fmt.Errorf("walking suite: %w", err)
 		}
+
+		err = VerifyPgp(config.SignedBy, string(in.Raw))
+		if err != nil {
+			return Tree{}, fmt.Errorf("verifying PGP signature for suite %s: %w", suite, err)
+		}
+
 		treeSuite.InRelease = in
 
+		// Contents
 		files, err := in.FileHashes()
 		if err != nil {
 			return Tree{}, fmt.Errorf("getting file hashes for suite: %w", err)
 		}
 
+		// Components & architectures
 		components := in.ByComponents(files)
 		for _, component := range components {
 			ctx := slogctx.Prepend(ctx, "component", component.Name, "architecture", component.Architecture)
