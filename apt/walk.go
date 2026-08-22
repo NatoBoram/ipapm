@@ -29,6 +29,13 @@ func (t Tree) Flat() (FileHashes, error) {
 	flat := make(FileHashes)
 
 	for _, suite := range t.Suites {
+
+		in := FileHash{
+			Filename: path.Join("dists", suite.Suite, "InRelease"),
+			Size:     uint(len(suite.InRelease.Raw)),
+		}
+		flat[in.Filename] = in
+
 		files, err := suite.InRelease.FileHashes()
 		if err != nil {
 			return nil, fmt.Errorf("getting file hashes for suite %s: %w", suite.Suite, err)
