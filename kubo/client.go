@@ -22,7 +22,7 @@ func (k *Client) Version(ctx context.Context) (*semver.Version, error) {
 		return nil, fmt.Errorf("getting version from Kubo: %w", err)
 	}
 	if resp.Error != nil {
-		return nil, fmt.Errorf("kubo error (%d) %q", resp.Error.Code, resp.Error.Message)
+		return nil, errorf("kubo error", resp.Error)
 	}
 	defer resp.Close()
 

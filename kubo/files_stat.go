@@ -23,7 +23,7 @@ type FilesStat struct {
 }
 
 func (k *Client) RepoRoot(ctx context.Context, uri *url.URL) (FilesStat, error) {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath())
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath())
 	if !path.IsAbs(target) {
 		target = "/" + target
 	}
@@ -40,7 +40,7 @@ func (k *Client) filesStat(ctx context.Context, target string) (FilesStat, error
 	defer resp.Close()
 
 	if resp.Error != nil {
-		return FilesStat{}, fmt.Errorf("kubo error (%d) %q", resp.Error.Code, resp.Error.Message)
+		return FilesStat{}, errorf("kubo error", resp.Error)
 	}
 
 	var out FilesStat
