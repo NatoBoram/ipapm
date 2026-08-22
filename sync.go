@@ -63,21 +63,28 @@ func syncConfig(ctx context.Context, env env.Env, kubo *kubo.Client, client *apt
 func cleanMfs(
 	ctx context.Context, kubo *kubo.Client, uri *url.URL,
 	flat apt.FileHashes, ls []kubo.FilesLsEntry,
-) {
+) []error {
+	var errors []error
 	for _, file := range ls {
+		if ctx.Err() != nil {
+			return errors
+		}
+
 		ctx := slogctx.Prepend(ctx, "filename", file.Filename)
 
 		if _, ok := flat[file.Filename]; ok {
 			continue
 		}
 
-		slog.InfoContext(ctx, "Removing file from MFS")
+		slog.InfoContext(ctx, "Cleaning garbage from MFS")
 
 		err := kubo.RemoveGc(ctx, uri, file.Filename)
 		if err != nil {
-			slog.WarnContext(ctx, "Error while removing file from MFS", slog.Any("error", err))
+			errors = append(errors, fmt.Errorf("removing %q from MFS: %w", file.Filename, err))
 		}
 	}
+
+	return errors
 }
 
 func syncSource(
@@ -106,7 +113,12 @@ func syncSource(
 	}
 
 	// Garbage collection
-	cleanMfs(ctx, kubo, config.URI, flat, ls)
+	errs := cleanMfs(ctx, kubo, config.URI, flat, ls)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			slog.WarnContext(ctx, "Error while cleaning MFS", "error", err)
+		}
+	}
 
 	// TODO: Send the whole tree here so we don't stream files twice
 	err = syncSuites(ctx, kubo, client, config, bar)
