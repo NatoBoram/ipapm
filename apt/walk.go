@@ -3,7 +3,6 @@ package apt
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"path"
 
 	slogctx "github.com/veqryn/slog-context"
@@ -26,7 +25,7 @@ type TreeComponent struct {
 	Sources   SourcesBytes
 }
 
-func (t Tree) Flat(uri *url.URL) (FileHashes, error) {
+func (t Tree) Flat() (FileHashes, error) {
 	flat := make(FileHashes)
 
 	for _, suite := range t.Suites {

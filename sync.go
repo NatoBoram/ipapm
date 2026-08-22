@@ -91,7 +91,7 @@ func syncSource(
 		return fmt.Errorf("walking config: %w", err)
 	}
 
-	flat, err := tree.Flat(config.URI)
+	flat, err := tree.Flat()
 	if err != nil {
 		return fmt.Errorf("flattening tree: %w", err)
 	}
