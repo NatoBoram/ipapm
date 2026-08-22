@@ -10,18 +10,18 @@ import (
 )
 
 func errorf(message string, err *rpc.Error) error {
-	if strings.HasSuffix(err.Message, fs.ErrPermission.Error()) {
-		return fmt.Errorf("%s (%d): %w", message, err.Code, fs.ErrPermission)
+	if before, ok := strings.CutSuffix(err.Message, fs.ErrPermission.Error()); ok {
+		return fmt.Errorf("%s (%d): %s%w", message, err.Code, before, fs.ErrPermission)
 	}
-	if strings.HasSuffix(err.Message, fs.ErrExist.Error()) {
-		return fmt.Errorf("%s (%d): %w", message, err.Code, fs.ErrExist)
+	if before, ok := strings.CutSuffix(err.Message, fs.ErrExist.Error()); ok {
+		return fmt.Errorf("%s (%d): %s%w", message, err.Code, before, fs.ErrExist)
 	}
-	if strings.HasSuffix(err.Message, fs.ErrNotExist.Error()) {
-		return fmt.Errorf("%s (%d): %w", message, err.Code, fs.ErrNotExist)
+	if before, ok := strings.CutSuffix(err.Message, fs.ErrNotExist.Error()); ok {
+		return fmt.Errorf("%s (%d): %s%w", message, err.Code, before, fs.ErrNotExist)
 	}
 
-	if strings.HasSuffix(err.Message, os.ErrDeadlineExceeded.Error()) {
-		return fmt.Errorf("%s (%d): %w", message, err.Code, os.ErrDeadlineExceeded)
+	if before, ok := strings.CutSuffix(err.Message, os.ErrDeadlineExceeded.Error()); ok {
+		return fmt.Errorf("%s (%d): %s%w", message, err.Code, before, os.ErrDeadlineExceeded)
 	}
 
 	return fmt.Errorf("%s (%d): %w", message, err.Code, *err)
