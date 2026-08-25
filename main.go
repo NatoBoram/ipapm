@@ -25,6 +25,7 @@ import (
 func start(ctx context.Context, env env.Env, kubo *kubo.Client, apt *apt.Client, pool *progress.Pool) {
 	// Wait for a very small amount of time for the initial start then reset using
 	// the full interval
+	slog.InfoContext(ctx, "Waiting...", "seconds", timeout.Seconds())
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 

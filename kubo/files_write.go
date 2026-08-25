@@ -12,32 +12,32 @@ import (
 )
 
 func (k *Client) WriteInRelease(ctx context.Context, uri *url.URL, suite string, body apt.InRelease) error {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, "InRelease")
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), "dists", suite, "InRelease")
 	return k.filesWrite(ctx, target, bytes.NewReader(body.Raw))
 }
 
 func (k *Client) WritePackages(ctx context.Context, uri *url.URL, suite string, file apt.FileByte) error {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, file.Hashes.Filename)
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), "dists", suite, file.Hashes.Filename)
 	return k.filesWrite(ctx, target, bytes.NewReader(file.Bytes))
 }
 
 func (k *Client) WriteSources(ctx context.Context, uri *url.URL, suite string, file apt.FileByte) error {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, file.Hashes.Filename)
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), "dists", suite, file.Hashes.Filename)
 	return k.filesWrite(ctx, target, bytes.NewReader(file.Bytes))
 }
 
 func (k *Client) WritePackage(ctx context.Context, uri *url.URL, file apt.FileHash, body io.Reader) error {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), file.Filename)
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), file.Filename)
 	return k.filesWrite(ctx, target, body)
 }
 
 func (k *Client) WriteSource(ctx context.Context, uri *url.URL, file apt.FileHash, body io.Reader) error {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), file.Filename)
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), file.Filename)
 	return k.filesWrite(ctx, target, body)
 }
 
 func (k *Client) WriteFile(ctx context.Context, uri *url.URL, suite string, file apt.FileHash, body io.Reader) error {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, file.Filename)
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), "dists", suite, file.Filename)
 	return k.filesWrite(ctx, target, body)
 }
 
@@ -58,7 +58,7 @@ func (k *Client) filesWrite(ctx context.Context, fileName string, body io.Reader
 	}
 	defer resp.Close()
 	if resp.Error != nil {
-		return fmt.Errorf("kubo error (%d) %q", resp.Error.Code, resp.Error.Message)
+		return errorf("kubo error", resp.Error)
 	}
 
 	return nil

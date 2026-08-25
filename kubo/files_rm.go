@@ -10,12 +10,12 @@ import (
 )
 
 func (k *Client) RemovePackage(ctx context.Context, uri *url.URL, file apt.Package) error {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), file.Filename)
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), file.Filename)
 	return k.filesRm(ctx, target)
 }
 
 func (k *Client) RemoveSource(ctx context.Context, uri *url.URL, file apt.FileHash) error {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), file.Filename)
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), file.Filename)
 	return k.filesRm(ctx, target)
 }
 
@@ -81,17 +81,22 @@ func (k *Client) removeComponentPackages(ctx context.Context, uri *url.URL, suit
 }
 
 func (k *Client) RemovePackages(ctx context.Context, uri *url.URL, suite string, file apt.FileByte) error {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, file.Hashes.Filename)
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), "dists", suite, file.Hashes.Filename)
 	return k.filesRm(ctx, target)
 }
 
 func (k *Client) RemoveSources(ctx context.Context, uri *url.URL, suite string, file apt.FileByte) error {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, file.Hashes.Filename)
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), "dists", suite, file.Hashes.Filename)
 	return k.filesRm(ctx, target)
 }
 
 func (k *Client) RemoveFile(ctx context.Context, uri *url.URL, suite string, file apt.FileHash) error {
-	target := path.Join(k.MFS, uri.Hostname(), uri.EscapedPath(), "dists", suite, file.Filename)
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), "dists", suite, file.Filename)
+	return k.filesRm(ctx, target)
+}
+
+func (k *Client) RemoveGc(ctx context.Context, uri *url.URL, filename string) error {
+	target := path.Join(k.MFS, uri.Host, uri.EscapedPath(), filename)
 	return k.filesRm(ctx, target)
 }
 
@@ -107,7 +112,7 @@ func (k *Client) filesRm(ctx context.Context, fileName string) error {
 	}
 	defer resp.Close()
 	if resp.Error != nil {
-		return fmt.Errorf("kubo error (%d) %q", resp.Error.Code, resp.Error.Message)
+		return errorf("kubo error", resp.Error)
 	}
 
 	return nil
