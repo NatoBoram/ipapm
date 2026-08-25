@@ -1,16 +1,18 @@
 # Inter-Planetary Advanced Package Mirror
 
-[![Go CI](https://github.com/NatoBoram/ipapm/actions/workflows/go.yaml/badge.svg)](https://github.com/NatoBoram/ipapm/actions/workflows/go.yaml) [![Docker CI](https://github.com/NatoBoram/ipapm/actions/workflows/docker.yaml/badge.svg)](https://github.com/NatoBoram/ipapm/actions/workflows/docker.yaml) [![CodeQL](https://github.com/NatoBoram/ipapm/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/NatoBoram/ipapm/actions/workflows/github-code-scanning/codeql)
+[![Go CI](https://github.com/NatoBoram/ipapm/actions/workflows/go.yaml/badge.svg)](https://github.com/NatoBoram/ipapm/actions/workflows/go.yaml) [![Docker CI](https://github.com/NatoBoram/ipapm/actions/workflows/docker.yaml/badge.svg)](https://github.com/NatoBoram/ipapm/actions/workflows/docker.yaml)
 
 Mirrors APT repositories to IPFS.
 
 ![Screenshot](https://github.com/user-attachments/assets/dd4d94bc-a2e4-4996-acc1-d1c4df6ec854)
 
-## Usage
-
 This program downloads packages from APT repositories, mirrors them to IPFS using Kubo's Mutable FileSystem and then publishes them to IPNS. It will check for changes between previous and next versions and only download added and updated files.
 
 To crawl APT repositories, it uses `InRelease` files and verifies their PGP signature. It also verifies the hash of any file downloaded from that `InRelease` file and from `Packages` & `Sources` files. An unsigned or incorrect repository cannot be mirrored.
+
+> [!WARNING]
+>
+> **[The end of IPFS at Shipyard](https://ipshipyard.com/blog/2026-the-end-of-ipfs-at-shipyard)**
 
 ## Installation
 
@@ -19,6 +21,31 @@ Binaries are available in [Releases](https://github.com/NatoBoram/ipapm/releases
 ```sh
 go install github.com/NatoBoram/ipapm@latest
 ```
+
+### Docker
+
+The default config file is at `/home/nonroot/.config/ipapm/config.yaml`. Don't forget to mount `.gpg` signatures.
+
+```yaml
+services:
+  ipapm:
+    container_name: ipapm
+    env_file:
+      - path: .env
+      - path: .env.local
+    environment:
+      GO_ENV: production
+    healthcheck:
+      test:
+        - CMD
+        - /usr/local/bin/readyz
+    image: natoboram/ipapm
+    volumes:
+      - ~/.config/ipapm/:/home/nonroot/.config/ipapm/
+      - /usr/share/keyrings/:/usr/share/keyrings/:ro
+```
+
+## Usage
 
 Environment variables set private values while the config file sets public values.
 
@@ -76,29 +103,6 @@ Sources:
       - stable
     Signed-By: /usr/share/keyrings/microsoft.gpg
 Port: 9090
-```
-
-### Docker
-
-The default config file is at `/home/nonroot/.config/ipapm/config.yaml`. Don't forget to mount `.gpg` signatures.
-
-```yaml
-services:
-  ipapm:
-    container_name: ipapm
-    env_file:
-      - path: .env
-      - path: .env.local
-    environment:
-      GO_ENV: production
-    healthcheck:
-      test:
-        - CMD
-        - /usr/local/bin/readyz
-    image: natoboram/ipapm
-    volumes:
-      - ~/.config/ipapm/:/home/nonroot/.config/ipapm/
-      - /usr/share/keyrings/:/usr/share/keyrings/:ro
 ```
 
 ## API
